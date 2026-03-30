@@ -30,12 +30,12 @@
 
   /* ─── SCREEN 1: QR SCAN ─── */
   #screen-scan { background: var(--bg); }
-  .scan-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #1a1208 0%, #080705 70%); }
-  .scan-grain { position: absolute; inset: 0; opacity: .04; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-  .scan-header { position: relative; text-align: center; margin-bottom: 3rem; }
+  .scan-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #1a1208 0%, #080705 70%); pointer-events: none; }
+  .scan-grain { position: absolute; inset: 0; opacity: .04; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .scan-header { position: relative; text-align: center; margin-bottom: 3rem; z-index: 1; }
   .scan-header .logo { font-family: 'Playfair Display', serif; font-size: 2.4rem; letter-spacing: .15em; color: var(--gold-light); }
   .scan-header .tagline { font-size: .72rem; letter-spacing: .35em; color: var(--muted); margin-top: .4rem; text-transform: uppercase; }
-  .qr-frame { position: relative; width: 220px; height: 220px; cursor: pointer; }
+  .qr-frame { position: relative; width: 220px; height: 220px; cursor: pointer; z-index: 1; }
   .qr-corner { position: absolute; width: 28px; height: 28px; }
   .qr-corner::before, .qr-corner::after { content: ''; position: absolute; background: var(--gold); }
   .qr-corner::before { width: 100%; height: 3px; }
@@ -48,9 +48,9 @@
   .qr-code-img { width: 160px; height: 160px; opacity: .6; }
   .qr-beam { position: absolute; left: 10px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent); top: 10px; animation: beam 2.4s ease-in-out infinite; box-shadow: 0 0 12px var(--gold); }
   @keyframes beam { 0%,100% { top: 10px; opacity: 0; } 10%,90% { opacity: 1; } 50% { top: calc(100% - 12px); } }
-  .scan-btn { position: relative; margin-top: 2.5rem; padding: .9rem 2.8rem; background: var(--accent); color: #fff; border: none; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .3s; }
+  .scan-btn { position: relative; margin-top: 2.5rem; padding: .9rem 2.8rem; background: var(--accent); color: #fff; border: none; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .3s; z-index: 1; }
   .scan-btn:hover { background: var(--gold); transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
-  .scan-hint { position: relative; font-size: .7rem; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; margin-top: 1rem; }
+  .scan-hint { position: relative; font-size: .7rem; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; margin-top: 1rem; z-index: 1; }
   .scan-anim { animation: scan-pulse .5s ease; }
   @keyframes scan-pulse { 0% { transform: scale(1); } 50% { transform: scale(.95); } 100% { transform: scale(1); } }
 
@@ -1057,7 +1057,9 @@ function initApp() {
 }
 
 // kick off
-initApp();
+document.addEventListener('DOMContentLoaded', initApp);
+// fallback if DOMContentLoaded already fired
+if (document.readyState !== 'loading') initApp();
 </script>
 </body>
 </html>
