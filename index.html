@@ -402,7 +402,8 @@ let activeCategory = 'All';
 // ══════════════════════════════════════════
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + name).classList.add('active');
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
   if (name === 'menu') renderMenu();
   if (name === 'cart') renderCart();
 }
@@ -1024,7 +1025,39 @@ window.addEventListener('resize', () => {
   }
 });
 
-// init
+// ══════════════════════════════════════════
+//  AUTO-DETECT TABLE FROM URL
+//  e.g. ?table=3  →  skip scan, open menu
+// ══════════════════════════════════════════
+function getTableFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('table');
+}
+
+function initApp() {
+  const table = getTableFromURL();
+  if (table) {
+    // came from QR scan — go straight to menu
+    // update header to show table number
+    document.querySelector('.menu-hero h1').textContent = 'Table ' + table + ' — Menu';
+    document.querySelector('.menu-hero p').textContent = 'Tap any item to view in 3D · Place on your table with AR';
+
+    // also show table badge in top bar
+    const topBar = document.querySelector('.menu-top');
+    const badge = document.createElement('div');
+    badge.style.cssText = 'font-size:.68rem;letter-spacing:.1em;color:var(--gold);background:rgba(200,132,30,.12);border:1px solid rgba(200,132,30,.3);padding:.25rem .7rem;border-radius:20px;';
+    badge.textContent = '🪑 Table ' + table;
+    topBar.insertBefore(badge, topBar.querySelector('.cart-btn'));
+
+    showScreen('menu');
+  } else {
+    // no table param — show the QR scan screen as normal
+    showScreen('scan');
+  }
+}
+
+// kick off
+initApp();
 </script>
 </body>
 </html>
