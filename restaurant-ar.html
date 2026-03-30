@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SAVEUR — AR Dining</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg: #080705;
+    --surface: #12100d;
+    --card: #1c1812;
+    --card2: #251f18;
+    --accent: #c8841e;
+    --gold: #e0a84a;
+    --gold-light: #f0cc88;
+    --text: #f0e8de;
+    --muted: #8a7a6a;
+    --dim: #4a3e32;
+    --red: #c04040;
+    --green: #4a9060;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+  /* ── SCREENS ── */
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* ─── SCREEN 1: QR SCAN ─── */
+  #screen-scan { background: var(--bg); }
+  .scan-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #1a1208 0%, #080705 70%); }
+  .scan-grain { position: absolute; inset: 0; opacity: .04; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .scan-header { position: relative; text-align: center; margin-bottom: 3rem; }
+  .scan-header .logo { font-family: 'Playfair Display', serif; font-size: 2.4rem; letter-spacing: .15em; color: var(--gold-light); }
+  .scan-header .tagline { font-size: .72rem; letter-spacing: .35em; color: var(--muted); margin-top: .4rem; text-transform: uppercase; }
+  .qr-frame { position: relative; width: 220px; height: 220px; cursor: pointer; }
+  .qr-corner { position: absolute; width: 28px; height: 28px; }
+  .qr-corner::before, .qr-corner::after { content: ''; position: absolute; background: var(--gold); }
+  .qr-corner::before { width: 100%; height: 3px; }
+  .qr-corner::after { width: 3px; height: 100%; }
+  .qr-corner.tl { top: 0; left: 0; }
+  .qr-corner.tr { top: 0; right: 0; transform: rotate(90deg); }
+  .qr-corner.bl { bottom: 0; left: 0; transform: rotate(-90deg); }
+  .qr-corner.br { bottom: 0; right: 0; transform: rotate(180deg); }
+  .qr-inner { position: absolute; inset: 10px; display: flex; align-items: center; justify-content: center; }
+  .qr-code-img { width: 160px; height: 160px; opacity: .6; }
+  .qr-beam { position: absolute; left: 10px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent); top: 10px; animation: beam 2.4s ease-in-out infinite; box-shadow: 0 0 12px var(--gold); }
+  @keyframes beam { 0%,100% { top: 10px; opacity: 0; } 10%,90% { opacity: 1; } 50% { top: calc(100% - 12px); } }
+  .scan-btn { position: relative; margin-top: 2.5rem; padding: .9rem 2.8rem; background: var(--accent); color: #fff; border: none; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .3s; }
+  .scan-btn:hover { background: var(--gold); transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
+  .scan-hint { position: relative; font-size: .7rem; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; margin-top: 1rem; }
+  .scan-anim { animation: scan-pulse .5s ease; }
+  @keyframes scan-pulse { 0% { transform: scale(1); } 50% { transform: scale(.95); } 100% { transform: scale(1); } }
+
+  /* ─── SCREEN 2: MENU ─── */
+  #screen-menu { background: var(--bg); flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
+  .menu-top { flex-shrink: 0; background: var(--surface); padding: 1rem 1.4rem .8rem; border-bottom: 1px solid rgba(200,132,30,.15); display: flex; align-items: center; justify-content: space-between; }
+  .menu-logo { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--gold-light); letter-spacing: .12em; }
+  .cart-btn { position: relative; background: none; border: none; cursor: pointer; color: var(--gold); padding: .4rem; }
+  .cart-btn svg { width: 24px; height: 24px; }
+  .cart-count { position: absolute; top: 0; right: 0; background: var(--accent); color: #fff; font-size: .6rem; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; display: none; }
+  .cart-count.visible { display: flex; }
+  .menu-hero { flex-shrink: 0; padding: 1.2rem 1.4rem .6rem; background: linear-gradient(to bottom, var(--surface), var(--bg)); }
+  .menu-hero h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); }
+  .menu-hero p { font-size: .78rem; color: var(--muted); margin-top: .3rem; letter-spacing: .05em; }
+  .categories { flex-shrink: 0; display: flex; gap: .5rem; padding: .6rem 1.4rem; overflow-x: auto; scrollbar-width: none; }
+  .categories::-webkit-scrollbar { display: none; }
+  .cat-btn { flex-shrink: 0; padding: .4rem 1rem; border-radius: 20px; border: 1px solid var(--dim); background: none; color: var(--muted); font-size: .75rem; letter-spacing: .08em; cursor: pointer; transition: all .25s; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+  .cat-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .menu-grid { flex: 1; overflow-y: auto; padding: .8rem 1.4rem 5rem; scrollbar-width: thin; scrollbar-color: var(--dim) transparent; }
+  .menu-grid::-webkit-scrollbar { width: 3px; }
+  .menu-grid::-webkit-scrollbar-thumb { background: var(--dim); }
+  .food-card { background: var(--card); border-radius: 10px; margin-bottom: .9rem; display: flex; align-items: center; overflow: hidden; cursor: pointer; transition: all .25s; border: 1px solid transparent; }
+  .food-card:hover { border-color: rgba(200,132,30,.3); transform: translateY(-1px); }
+  .food-3d-thumb { width: 100px; height: 90px; flex-shrink: 0; background: var(--card2); position: relative; overflow: hidden; }
+  .food-3d-thumb canvas { width: 100% !important; height: 100% !important; }
+  .food-info { flex: 1; padding: .7rem 1rem; }
+  .food-name { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--text); }
+  .food-desc { font-size: .7rem; color: var(--muted); margin-top: .2rem; line-height: 1.4; }
+  .food-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: .6rem; }
+  .food-price { font-size: .95rem; color: var(--gold); font-weight: 500; }
+  .food-add { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+  .food-add:hover { background: var(--gold); transform: scale(1.1); }
+  .ar-badge { display: inline-flex; align-items: center; gap: .25rem; font-size: .58rem; background: rgba(200,132,30,.15); border: 1px solid rgba(200,132,30,.35); color: var(--gold); padding: .15rem .4rem; border-radius: 3px; margin-left: .4rem; letter-spacing: .05em; }
+
+  /* ─── SCREEN 3: FOOD DETAIL ─── */
+  #screen-detail { background: var(--bg); flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
+  .detail-header { flex-shrink: 0; padding: 1rem 1.4rem; display: flex; align-items: center; gap: 1rem; }
+  .back-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 1.3rem; padding: .2rem; }
+  .detail-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--text); }
+  .detail-3d-area { flex-shrink: 0; height: 280px; background: radial-gradient(ellipse at 50% 60%, #2a1e0a 0%, var(--bg) 70%); position: relative; overflow: hidden; }
+  #detail-canvas { width: 100%; height: 100%; display: block; }
+  .ar-btn { position: absolute; bottom: 1rem; right: 1rem; display: flex; align-items: center; gap: .5rem; background: rgba(0,0,0,.6); backdrop-filter: blur(10px); border: 1px solid var(--accent); color: var(--gold); padding: .55rem 1rem; border-radius: 25px; font-size: .72rem; letter-spacing: .1em; cursor: pointer; text-transform: uppercase; font-family: 'DM Sans', sans-serif; transition: all .3s; }
+  .ar-btn:hover { background: rgba(200,132,30,.2); }
+  .ar-btn svg { width: 16px; height: 16px; }
+  .detail-info { flex: 1; overflow-y: auto; padding: 1.2rem 1.4rem; }
+  .detail-food-name { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--text); }
+  .detail-food-sub { font-size: .75rem; color: var(--muted); letter-spacing: .08em; margin-top: .2rem; }
+  .detail-tags { display: flex; gap: .4rem; margin-top: .8rem; flex-wrap: wrap; }
+  .tag { font-size: .62rem; padding: .2rem .6rem; border-radius: 3px; background: var(--card2); color: var(--muted); letter-spacing: .06em; }
+  .detail-desc { font-size: .82rem; color: var(--muted); line-height: 1.7; margin-top: 1rem; }
+  .detail-price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--dim); }
+  .detail-price { font-size: 1.5rem; color: var(--gold); font-weight: 500; }
+  .qty-ctrl { display: flex; align-items: center; gap: .8rem; }
+  .qty-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--card2); border: 1px solid var(--dim); color: var(--text); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+  .qty-btn:hover { border-color: var(--accent); color: var(--gold); }
+  .qty-val { font-size: 1rem; min-width: 20px; text-align: center; }
+  .add-cart-btn { margin-top: 1.2rem; width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--accent), var(--gold)); color: #fff; border: none; border-radius: 4px; font-size: .85rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .3s; font-weight: 500; }
+  .add-cart-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
+  .add-cart-btn.added { background: var(--green); }
+
+  /* ─── SCREEN 4: AR VIEW ─── */
+  #screen-ar { background: #000; flex-direction: column; overflow: hidden; }
+  #ar-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #ar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ar-overlay-ui { position: absolute; inset: 0; pointer-events: none; }
+  .ar-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 1rem 1.4rem; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(to bottom, rgba(0,0,0,.6), transparent); pointer-events: all; }
+  .ar-close { background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.2); color: #fff; width: 38px; height: 38px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+  .ar-label { font-size: .7rem; letter-spacing: .15em; color: rgba(255,255,255,.7); text-transform: uppercase; }
+  .ar-instructions { position: absolute; bottom: 5rem; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); backdrop-filter: blur(12px); border: 1px solid rgba(200,132,30,.3); color: rgba(255,255,255,.8); padding: .7rem 1.4rem; border-radius: 25px; font-size: .72rem; letter-spacing: .08em; text-align: center; white-space: nowrap; }
+  .ar-surface-indicator { position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 180px; height: 80px; border: 2px dashed rgba(200,132,30,.5); border-radius: 50%; animation: surface-pulse 1.8s ease-in-out infinite; }
+  @keyframes surface-pulse { 0%,100% { opacity: .4; transform: translate(-50%, 50%) scale(1); } 50% { opacity: .9; transform: translate(-50%, 50%) scale(1.05); } }
+  .ar-snap-btn { position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: rgba(200,132,30,.9); color: #fff; border: none; border-radius: 25px; padding: .8rem 2rem; font-family: 'DM Sans', sans-serif; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; pointer-events: all; }
+
+  /* ─── SCREEN 5: CART ─── */
+  #screen-cart { background: var(--bg); flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
+  .cart-header { flex-shrink: 0; padding: 1rem 1.4rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid rgba(200,132,30,.1); }
+  .cart-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--text); }
+  .cart-items { flex: 1; overflow-y: auto; padding: 1rem 1.4rem; }
+  .cart-item { display: flex; align-items: center; gap: 1rem; padding: .9rem 0; border-bottom: 1px solid var(--card); }
+  .cart-item-thumb { width: 56px; height: 56px; border-radius: 6px; background: var(--card2); flex-shrink: 0; overflow: hidden; }
+  .cart-item-thumb canvas { width: 100% !important; height: 100% !important; }
+  .cart-item-info { flex: 1; }
+  .cart-item-name { font-family: 'Playfair Display', serif; font-size: .95rem; }
+  .cart-item-price { font-size: .82rem; color: var(--gold); margin-top: .2rem; }
+  .cart-item-qty { display: flex; align-items: center; gap: .6rem; }
+  .cq-btn { width: 26px; height: 26px; border-radius: 50%; background: var(--card2); border: 1px solid var(--dim); color: var(--text); cursor: pointer; font-size: .9rem; display: flex; align-items: center; justify-content: center; }
+  .cart-footer { flex-shrink: 0; padding: 1rem 1.4rem; border-top: 1px solid rgba(200,132,30,.15); background: var(--surface); }
+  .cart-total-row { display: flex; justify-content: space-between; margin-bottom: .4rem; font-size: .8rem; color: var(--muted); }
+  .cart-total-row.main { font-size: 1rem; color: var(--text); font-weight: 500; margin-top: .6rem; }
+  .cart-total-row.main .val { color: var(--gold); }
+  .checkout-btn { margin-top: .9rem; width: 100%; padding: .95rem; background: linear-gradient(135deg, var(--accent), var(--gold)); color: #fff; border: none; border-radius: 4px; font-size: .85rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all .3s; }
+  .checkout-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
+  .empty-cart { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 1rem; }
+  .empty-cart svg { opacity: .3; }
+
+  /* ─── SCREEN 6: CONFIRM ─── */
+  #screen-confirm { background: var(--bg); }
+  .confirm-inner { text-align: center; padding: 2rem; }
+  .confirm-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(74,144,96,.15); border: 2px solid var(--green); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; }
+  .confirm-inner h2 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); }
+  .confirm-inner p { font-size: .82rem; color: var(--muted); margin-top: .6rem; line-height: 1.6; }
+  .order-num { margin-top: 1.5rem; font-size: .7rem; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; }
+  .order-num span { color: var(--gold); }
+  .confirm-back { margin-top: 2rem; padding: .85rem 2.5rem; background: var(--card2); border: 1px solid var(--dim); color: var(--text); border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .3s; }
+  .confirm-back:hover { border-color: var(--accent); color: var(--gold); }
+
+  /* ─── TOAST ─── */
+  .toast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--card2); border: 1px solid rgba(200,132,30,.3); color: var(--text); padding: .65rem 1.4rem; border-radius: 25px; font-size: .78rem; letter-spacing: .06em; opacity: 0; transition: all .4s; z-index: 999; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ─── LOADING ─── */
+  .loading-spinner { width: 32px; height: 32px; border: 2px solid var(--dim); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin: 2rem auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .no-camera-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: .85rem; text-align: center; padding: 2rem; gap: 1rem; background: #0a0a0a; }
+  .no-camera-msg svg { opacity: .3; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ SCREEN 1: QR SCAN ══════════ -->
+<div id="screen-scan" class="screen active">
+  <div class="scan-bg"></div>
+  <div class="scan-grain"></div>
+  <div class="scan-header">
+    <div class="logo">SAVEUR</div>
+    <div class="tagline">Augmented Dining Experience</div>
+  </div>
+  <div class="qr-frame" id="qr-frame">
+    <div class="qr-corner tl"></div>
+    <div class="qr-corner tr"></div>
+    <div class="qr-corner bl"></div>
+    <div class="qr-corner br"></div>
+    <div class="qr-inner">
+      <!-- Inline QR pattern -->
+      <svg class="qr-code-img" viewBox="0 0 100 100" fill="white">
+        <rect x="5" y="5" width="35" height="35" rx="2" fill="none" stroke="white" stroke-width="3"/>
+        <rect x="12" y="12" width="21" height="21" rx="1" fill="white"/>
+        <rect x="60" y="5" width="35" height="35" rx="2" fill="none" stroke="white" stroke-width="3"/>
+        <rect x="67" y="12" width="21" height="21" rx="1" fill="white"/>
+        <rect x="5" y="60" width="35" height="35" rx="2" fill="none" stroke="white" stroke-width="3"/>
+        <rect x="12" y="67" width="21" height="21" rx="1" fill="white"/>
+        <rect x="48" y="48" width="8" height="8" fill="white"/>
+        <rect x="60" y="48" width="8" height="8" fill="white"/>
+        <rect x="72" y="48" width="8" height="8" fill="white"/>
+        <rect x="84" y="48" width="8" height="8" fill="white"/>
+        <rect x="48" y="60" width="8" height="8" fill="white"/>
+        <rect x="72" y="60" width="8" height="8" fill="white"/>
+        <rect x="48" y="72" width="8" height="8" fill="white"/>
+        <rect x="60" y="72" width="8" height="8" fill="white"/>
+        <rect x="84" y="72" width="8" height="8" fill="white"/>
+        <rect x="48" y="84" width="8" height="8" fill="white"/>
+        <rect x="72" y="84" width="8" height="8" fill="white"/>
+        <rect x="84" y="84" width="8" height="8" fill="white"/>
+      </svg>
+    </div>
+    <div class="qr-beam"></div>
+  </div>
+  <button class="scan-btn" onclick="simulateScan()">Scan QR Code</button>
+  <div class="scan-hint">Point camera at table QR code</div>
+</div>
+
+<!-- ══════════ SCREEN 2: MENU ══════════ -->
+<div id="screen-menu" class="screen">
+  <div class="menu-top">
+    <div class="menu-logo">SAVEUR</div>
+    <button class="cart-btn" onclick="showScreen('cart')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      <span class="cart-count" id="cart-count">0</span>
+    </button>
+  </div>
+  <div class="menu-hero">
+    <h1>Today's Menu</h1>
+    <p>Tap any item to view in 3D · Place on your table with AR</p>
+  </div>
+  <div class="categories" id="categories"></div>
+  <div class="menu-grid" id="menu-grid"></div>
+</div>
+
+<!-- ══════════ SCREEN 3: DETAIL ══════════ -->
+<div id="screen-detail" class="screen">
+  <div class="detail-header">
+    <button class="back-btn" onclick="showScreen('menu')">←</button>
+    <span class="detail-title" id="detail-head-title"></span>
+  </div>
+  <div class="detail-3d-area">
+    <canvas id="detail-canvas"></canvas>
+    <button class="ar-btn" onclick="openAR()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M21 16V8a2 2 0 00-1-1.73L13 2.27a2 2 0 00-2 0L4 6.27A2 2 0 003 8v8a2 2 0 001 1.73L11 21.73a2 2 0 002 0l7-4a2 2 0 001-1.73z"/>
+      </svg>
+      View in AR
+    </button>
+  </div>
+  <div class="detail-info">
+    <div style="display:flex;align-items:baseline;gap:.5rem;">
+      <div class="detail-food-name" id="detail-name"></div>
+    </div>
+    <div class="detail-food-sub" id="detail-sub"></div>
+    <div class="detail-tags" id="detail-tags"></div>
+    <div class="detail-desc" id="detail-desc"></div>
+    <div class="detail-price-row">
+      <div class="detail-price" id="detail-price"></div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <span class="qty-val" id="qty-val">1</span>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <button class="add-cart-btn" id="add-cart-btn" onclick="addToCart()">Add to Order</button>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN 4: AR ══════════ -->
+<div id="screen-ar" class="screen">
+  <video id="ar-video" autoplay playsinline muted></video>
+  <canvas id="ar-canvas"></canvas>
+  <div class="ar-overlay-ui">
+    <div class="ar-top-bar">
+      <button class="ar-close" onclick="closeAR()">✕</button>
+      <div class="ar-label" id="ar-food-label"></div>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="ar-surface-indicator" id="ar-surface-ind"></div>
+    <div class="ar-instructions" id="ar-instructions">Move camera slowly to detect surface</div>
+    <button class="ar-snap-btn" onclick="snapAR()">📸 Capture</button>
+  </div>
+  <div class="no-camera-msg" id="no-camera-msg" style="display:none;">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    <div>Camera not available.<br>Please allow camera access for AR viewing.</div>
+    <button onclick="closeAR()" style="background:var(--card2);border:1px solid var(--dim);color:var(--text);padding:.6rem 1.4rem;border-radius:4px;cursor:pointer;font-family:inherit;">Go Back</button>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN 5: CART ══════════ -->
+<div id="screen-cart" class="screen">
+  <div class="cart-header">
+    <button class="back-btn" onclick="showScreen('menu')">←</button>
+    <span class="cart-title">Your Order</span>
+  </div>
+  <div id="cart-empty" class="empty-cart" style="display:none;">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    <span>Your order is empty</span>
+  </div>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="cart-footer" id="cart-footer" style="display:none;">
+    <div class="cart-total-row"><span>Subtotal</span><span class="val" id="cart-sub">₹0</span></div>
+    <div class="cart-total-row"><span>Tax (5%)</span><span class="val" id="cart-tax">₹0</span></div>
+    <div class="cart-total-row main"><span>Total</span><span class="val" id="cart-total">₹0</span></div>
+    <button class="checkout-btn" onclick="placeOrder()">Place Order</button>
+  </div>
+</div>
+
+<!-- ══════════ SCREEN 6: CONFIRM ══════════ -->
+<div id="screen-confirm" class="screen">
+  <div class="confirm-inner">
+    <div class="confirm-icon">✓</div>
+    <h2>Order Placed!</h2>
+    <p>Your delicious food is being prepared.<br>Estimated time: 20–25 minutes.</p>
+    <div class="order-num">Order #<span id="order-num-val"></span></div>
+    <button class="confirm-back" onclick="resetAndGoHome()">Back to Menu</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+const MENU = [
+  {
+    id: 1, category: 'Mains',
+    name: 'Wagyu Burger', sub: 'Signature Dish',
+    price: 680, desc: 'Double wagyu patty with aged cheddar, caramelised onions, truffle aioli, pickled jalapeños in a brioche bun. Served with hand-cut fries.',
+    tags: ['Beef', 'Signature', 'Medium Spicy'],
+    model: 'burger', color: '#d4882a'
+  },
+  {
+    id: 2, category: 'Mains',
+    name: 'Margherita Pizza', sub: 'Wood-Fired',
+    price: 520, desc: 'Classic Neapolitan-style pizza with San Marzano tomato sauce, fresh buffalo mozzarella, basil leaves, and extra virgin olive oil.',
+    tags: ['Vegetarian', 'Italian', 'Mild'],
+    model: 'pizza', color: '#d44020'
+  },
+  {
+    id: 3, category: 'Mains',
+    name: 'Tonkotsu Ramen', sub: 'Chef\'s Special',
+    price: 450, desc: 'Rich 18-hour pork bone broth with chashu pork, soft-boiled ramen egg, bamboo shoots, nori, and spring onions.',
+    tags: ['Pork', 'Japanese', 'Rich'],
+    model: 'ramen', color: '#c0780a'
+  },
+  {
+    id: 4, category: 'Starters',
+    name: 'Sushi Platter', sub: '12 Pieces',
+    price: 890, desc: 'Assorted nigiri and maki featuring salmon, tuna, yellowtail, and avocado. Served with pickled ginger, wasabi, and premium soy sauce.',
+    tags: ['Seafood', 'Japanese', 'Fresh'],
+    model: 'sushi', color: '#f08040'
+  },
+  {
+    id: 5, category: 'Mains',
+    name: 'Grilled Ribeye', sub: '250g — Dry Aged',
+    price: 1200, desc: 'Premium 28-day dry-aged ribeye cooked to perfection, served with truffle butter, roasted garlic, asparagus, and red wine jus.',
+    tags: ['Beef', 'Grill', 'Premium'],
+    model: 'steak', color: '#a84020'
+  },
+  {
+    id: 6, category: 'Desserts',
+    name: 'Crème Brûlée', sub: 'Classic French',
+    price: 280, desc: 'Silky vanilla custard with a perfectly caramelised sugar crust. Served with fresh raspberries and mint.',
+    tags: ['Vegetarian', 'French', 'Sweet'],
+    model: 'creme', color: '#e8c060'
+  },
+  {
+    id: 7, category: 'Starters',
+    name: 'Truffle Fries', sub: 'House Special',
+    price: 240, desc: 'Crispy Belgian frites tossed in white truffle oil, shaved parmesan, fresh herbs, and sea salt flakes.',
+    tags: ['Vegetarian', 'Snack', 'Truffle'],
+    model: 'fries', color: '#d4a030'
+  },
+  {
+    id: 8, category: 'Drinks',
+    name: 'Matcha Latte', sub: 'Ceremonial Grade',
+    price: 180, desc: 'Ceremonial grade matcha whisked with steamed oat milk, lightly sweetened with agave. Hot or iced.',
+    tags: ['Vegan', 'Japanese', 'Beverage'],
+    model: 'drink', color: '#60a050'
+  },
+];
+const CATEGORIES = ['All', ...new Set(MENU.map(i => i.category))];
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let cart = [];
+let currentItem = null;
+let currentQty = 1;
+let detailScene = null, detailRenderer = null, detailAnimId = null;
+let arScene = null, arRenderer = null, arAnimId = null, arStream = null;
+let thumbScenes = {};
+let activeCategory = 'All';
+
+// ══════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (name === 'menu') renderMenu();
+  if (name === 'cart') renderCart();
+}
+
+// ══════════════════════════════════════════
+//  QR SCAN
+// ══════════════════════════════════════════
+function simulateScan() {
+  const frame = document.getElementById('qr-frame');
+  frame.classList.add('scan-anim');
+  setTimeout(() => { frame.classList.remove('scan-anim'); showScreen('menu'); }, 500);
+}
+
+// ══════════════════════════════════════════
+//  3D MODEL BUILDER
+// ══════════════════════════════════════════
+function buildFoodModel(type, scene) {
+  const group = new THREE.Group();
+  const M = THREE.MeshStandardMaterial;
+
+  if (type === 'burger') {
+    const bun = (y, r, c) => {
+      const g = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI*2, 0, Math.PI/2);
+      const m = new THREE.Mesh(g, new M({ color: c, roughness: .7, metalness: 0 }));
+      m.position.y = y; m.rotation.x = type === 'burger' ? 0 : 0;
+      return m;
+    };
+    const disc = (y, r, h, c, rough=.6) => {
+      const g = new THREE.CylinderGeometry(r, r, h, 32);
+      const m = new THREE.Mesh(g, new M({ color: c, roughness: rough, metalness: 0 }));
+      m.position.y = y; return m;
+    };
+    group.add(disc(-0.5, 1.1, 0.45, '#c47a30')); // bottom bun
+    group.add(disc(-0.1, 1.0, 0.25, '#3a2010')); // patty 1
+    group.add(disc(0.2, 0.95, 0.12, '#e8c830')); // cheese
+    group.add(disc(0.35, 1.0, 0.1, '#58a040')); // lettuce
+    group.add(disc(0.48, 0.9, 0.12, '#d04020')); // tomato
+    group.add(disc(0.62, 0.9, 0.25, '#3a2010')); // patty 2
+    // top bun (sphere cap)
+    const topG = new THREE.SphereGeometry(1.1, 24, 16, 0, Math.PI*2, 0, Math.PI*0.55);
+    const topBun = new THREE.Mesh(topG, new M({ color: '#c87820', roughness: .7 }));
+    topBun.position.y = 0.72; group.add(topBun);
+    // sesame seeds
+    for(let i=0;i<8;i++) {
+      const sg = new THREE.EllipsoidGeometry ? new THREE.SphereGeometry(.06,8,8) : new THREE.SphereGeometry(.06,8,8);
+      const s = new THREE.Mesh(sg, new M({color:'#f8e8b0',roughness:.9}));
+      const a = (i/8)*Math.PI*2; s.position.set(Math.cos(a)*.6, 1.55, Math.sin(a)*.6); group.add(s);
+    }
+
+  } else if (type === 'pizza') {
+    // base
+    const baseG = new THREE.CylinderGeometry(1.4, 1.4, .12, 32);
+    group.add(new THREE.Mesh(baseG, new M({ color: '#d4a050', roughness: .8 })));
+    // crust ring
+    const crustG = new THREE.TorusGeometry(1.4, .12, 8, 40);
+    const crust = new THREE.Mesh(crustG, new M({ color: '#c47830', roughness: .9 }));
+    crust.position.y = .05; group.add(crust);
+    // sauce
+    const sauceG = new THREE.CylinderGeometry(1.28, 1.28, .04, 32);
+    const sauce = new THREE.Mesh(sauceG, new M({ color: '#c03820', roughness: .7 }));
+    sauce.position.y = .08; group.add(sauce);
+    // cheese blobs
+    for(let i=0;i<12;i++) {
+      const a=(i/12)*Math.PI*2, r=.5+Math.random()*.6;
+      const cg = new THREE.SphereGeometry(.18+Math.random()*.1, 8, 6);
+      const cb = new THREE.Mesh(cg, new M({ color: '#f0e080', roughness: .6 }));
+      cb.position.set(Math.cos(a)*r, .15, Math.sin(a)*r); cb.scale.y = .4; group.add(cb);
+    }
+    // pepperoni
+    for(let i=0;i<7;i++) {
+      const a=(i/7)*Math.PI*2+.3, r=.7;
+      const pg = new THREE.CylinderGeometry(.16,.16,.05,16);
+      const pb = new THREE.Mesh(pg, new M({ color: '#a02010', roughness: .8 }));
+      pb.position.set(Math.cos(a)*r, .17, Math.sin(a)*r); group.add(pb);
+    }
+
+  } else if (type === 'ramen') {
+    // bowl
+    const bowlG = new THREE.CylinderGeometry(1.3, .9, .8, 32, 1, true);
+    group.add(new THREE.Mesh(bowlG, new M({ color: '#e8e0d0', roughness: .3, metalness: .1 })));
+    const bowlBase = new THREE.CylinderGeometry(.9,.9,.08,32);
+    group.add(new THREE.Mesh(bowlBase, new M({ color: '#e8e0d0', roughness: .3 })));
+    // broth
+    const brothG = new THREE.CylinderGeometry(1.25, 1.25, .05, 32);
+    const broth = new THREE.Mesh(brothG, new M({ color: '#c07020', roughness: .1, metalness: .05, transparent: true, opacity: .9 }));
+    broth.position.y = .38; group.add(broth);
+    // noodles (torus knots)
+    for(let i=0;i<4;i++) {
+      const ng = new THREE.TorusGeometry(.35+i*.08,.04,6,20);
+      const n = new THREE.Mesh(ng, new M({ color: '#f0e8b0', roughness: .9 }));
+      n.position.set((i-.5)*.2, .42, (i*.15)-.2);
+      n.rotation.x = Math.PI/2 + i*.3; n.rotation.z = i*.5;
+      group.add(n);
+    }
+    // chashu pork slice
+    const cG = new THREE.CylinderGeometry(.35,.35,.08,16);
+    const cp = new THREE.Mesh(cG, new M({ color: '#a04030', roughness: .8 }));
+    cp.position.set(-.5, .46, 0); cp.rotation.z = .3; group.add(cp);
+    // egg
+    const eG = new THREE.SphereGeometry(.22, 12, 10);
+    const egg = new THREE.Mesh(eG, new M({ color: '#f8e090', roughness: .5 }));
+    egg.position.set(.5, .5, .2); egg.scale.y = .75; group.add(egg);
+    // nori
+    const norG = new THREE.BoxGeometry(.08,.4,.5);
+    const nor = new THREE.Mesh(norG, new M({ color: '#1a3010', roughness: .9 }));
+    nor.position.set(.1, .5, -.4); nor.rotation.y = .4; group.add(nor);
+
+  } else if (type === 'sushi') {
+    const pieces = [
+      { x: -1.2, z: -.3, c: '#f88050', tc: '#f0e8d0' }, // salmon nigiri
+      { x: -.5, z: .2, c: '#d04040', tc: '#f0e8d0' },  // tuna
+      { x: .2, z: -.2, c: '#f8c860', tc: '#f0e8d0' },  // yellowtail
+      { x: .9, z: .3, c: '#50c888', tc: '#f0e8d0' },   // avocado
+    ];
+    pieces.forEach(p => {
+      const riceG = new THREE.CylinderGeometry(.25,.28,.2,16);
+      const rice = new THREE.Mesh(riceG, new M({ color: p.tc, roughness: .8 }));
+      rice.position.set(p.x, 0, p.z); group.add(rice);
+      const fishG = new THREE.BoxGeometry(.55,.12,.3);
+      const fish = new THREE.Mesh(fishG, new M({ color: p.c, roughness: .5 }));
+      fish.position.set(p.x, .18, p.z); fish.rotation.y = .1; group.add(fish);
+    });
+    // maki rolls
+    for(let i=0;i<3;i++) {
+      const mk = new THREE.CylinderGeometry(.18,.18,.38,16);
+      const mroll = new THREE.Mesh(mk, new M({ color: '#1a3010', roughness: .8 }));
+      mroll.position.set(-1.4+i*.5, .1, .8); mroll.rotation.z = Math.PI/2; group.add(mroll);
+      const inner = new THREE.CylinderGeometry(.1,.1,.4,12);
+      const inm = new THREE.Mesh(inner, new M({ color: ['#f88050','#d04040','#50c888'][i], roughness:.6 }));
+      inm.position.set(-1.4+i*.5, .1, .8); inm.rotation.z = Math.PI/2; group.add(inm);
+    }
+    // plate
+    const plateG = new THREE.CylinderGeometry(1.8,1.8,.05,40);
+    const plate = new THREE.Mesh(plateG, new M({ color: '#e8e0d0', roughness: .2, metalness: .1 }));
+    plate.position.y = -.15; group.add(plate);
+
+  } else if (type === 'steak') {
+    // plate
+    const plateG = new THREE.CylinderGeometry(1.6,1.6,.06,40);
+    group.add(new THREE.Mesh(plateG, new M({ color: '#f0f0ee', roughness: .15, metalness: .15 })));
+    // steak shape (irregular box)
+    const steakG = new THREE.BoxGeometry(1.8, .25, 1.1);
+    const steak = new THREE.Mesh(steakG, new M({ color: '#7a1e10', roughness: .8 }));
+    steak.position.set(0,.2,-.1); group.add(steak);
+    // crust top
+    const crustG = new THREE.BoxGeometry(1.75,.06,1.05);
+    const crust = new THREE.Mesh(crustG, new M({ color: '#3a0c08', roughness: .9 }));
+    crust.position.set(0,.34,-.1); group.add(crust);
+    // butter pat
+    const bG = new THREE.CylinderGeometry(.18,.18,.08,12);
+    const butter = new THREE.Mesh(bG, new M({ color: '#f8d840', roughness: .5 }));
+    butter.position.set(.3,.38,.1); group.add(butter);
+    // asparagus
+    for(let i=0;i<3;i++) {
+      const aG = new THREE.CylinderGeometry(.06,.04,.8,8);
+      const asp = new THREE.Mesh(aG, new M({ color: '#58a040', roughness: .8 }));
+      asp.position.set(-1+i*.15, .25, .7-.i*.05); asp.rotation.z = .2; group.add(asp);
+    }
+
+  } else if (type === 'creme') {
+    // ramekin
+    const ramG = new THREE.CylinderGeometry(.8,.65,.5,24, 1, true);
+    group.add(new THREE.Mesh(ramG, new M({ color: '#e0d8c8', roughness: .3 })));
+    const ramBase = new THREE.CylinderGeometry(.65,.65,.06,24);
+    group.add(new THREE.Mesh(ramBase, new M({ color: '#e0d8c8', roughness: .3 })));
+    // custard
+    const custG = new THREE.CylinderGeometry(.78,.78,.06,24);
+    const cust = new THREE.Mesh(custG, new M({ color: '#f8e880', roughness: .4 }));
+    cust.position.y = .25; group.add(cust);
+    // caramel top
+    const carG = new THREE.CylinderGeometry(.78,.78,.04,24);
+    const car = new THREE.Mesh(carG, new M({ color: '#c06010', roughness: .2, metalness: .05 }));
+    car.position.y = .3; group.add(car);
+    // raspberries
+    for(let i=0;i<3;i++) {
+      const a=(i/3)*Math.PI*2;
+      const rg = new THREE.SphereGeometry(.12,8,8);
+      const rb = new THREE.Mesh(rg, new M({ color: '#c02050', roughness: .7 }));
+      rb.position.set(Math.cos(a)*.5, .36, Math.sin(a)*.5); group.add(rb);
+    }
+
+  } else if (type === 'fries') {
+    // box
+    const boxG = new THREE.BoxGeometry(.8,1.0,.6);
+    group.add(new THREE.Mesh(boxG, new M({ color: '#e82020', roughness: .7 })));
+    const logoG = new THREE.BoxGeometry(.82,.3,.04);
+    const logo = new THREE.Mesh(logoG, new M({ color: '#f8f000', roughness: .8 }));
+    logo.position.set(0,.1,.32); group.add(logo);
+    // fries sticking out
+    for(let i=0;i<18;i++) {
+      const h=.4+Math.random()*.5;
+      const fg = new THREE.BoxGeometry(.06,.06+h,.06);
+      const fry = new THREE.Mesh(fg, new M({ color: '#f0c840', roughness: .8 }));
+      const x=(Math.random()-.5)*.6, z=(Math.random()-.5)*.4;
+      fry.position.set(x, .5+h/2, z);
+      fry.rotation.z = (Math.random()-.5)*.3;
+      fry.rotation.x = (Math.random()-.5)*.3;
+      group.add(fry);
+    }
+
+  } else if (type === 'drink') {
+    // glass
+    const glassMat = new M({ color: '#88ccff', roughness: .05, metalness: .1, transparent: true, opacity: .3 });
+    const glassG = new THREE.CylinderGeometry(.7,.5,1.4,24,1,true);
+    group.add(new THREE.Mesh(glassG, glassMat));
+    const glassBase = new THREE.CylinderGeometry(.5,.5,.06,24);
+    group.add(new THREE.Mesh(glassBase, new M({ color: '#88ccff', roughness:.05, transparent:true, opacity:.4 })));
+    // liquid
+    const liqG = new THREE.CylinderGeometry(.65,.47,1.1,24);
+    const liq = new THREE.Mesh(liqG, new M({ color: '#60a050', roughness: .1, transparent: true, opacity: .8 }));
+    liq.position.y = -.1; group.add(liq);
+    // foam
+    const fG = new THREE.CylinderGeometry(.65,.65,.1,24);
+    const foam = new THREE.Mesh(fG, new M({ color: '#e8f8e8', roughness: .8, transparent: true, opacity: .9 }));
+    foam.position.y = .55; group.add(foam);
+    // straw
+    const stG = new THREE.CylinderGeometry(.03,.03,1.8,8);
+    const st = new THREE.Mesh(stG, new M({ color: '#e04040', roughness: .8 }));
+    st.position.set(.3,.4,0); st.rotation.z = .15; group.add(st);
+  }
+
+  return group;
+}
+
+// ══════════════════════════════════════════
+//  THUMBNAIL RENDERER
+// ══════════════════════════════════════════
+function createThumbRenderer(canvas, modelType, bgColor) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(canvas.offsetWidth || 100, canvas.offsetHeight || 90);
+  renderer.shadowMap.enabled = true;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, (canvas.offsetWidth||100)/(canvas.offsetHeight||90), .1, 100);
+  camera.position.set(0, 1.5, 4.5);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight('#ffffff', .6));
+  const dir = new THREE.DirectionalLight('#ffe0a0', 1.4);
+  dir.position.set(3, 5, 3); dir.castShadow = true; scene.add(dir);
+  const fill = new THREE.DirectionalLight('#a0c0ff', .4);
+  fill.position.set(-3, 2, -2); scene.add(fill);
+
+  const model = buildFoodModel(modelType, scene);
+  scene.add(model);
+
+  let frame;
+  const animate = () => {
+    frame = requestAnimationFrame(animate);
+    model.rotation.y += .012;
+    renderer.render(scene, camera);
+  };
+  animate();
+  return { renderer, scene, model, camera, frame, stop: () => cancelAnimationFrame(frame) };
+}
+
+// ══════════════════════════════════════════
+//  MENU RENDER
+// ══════════════════════════════════════════
+function renderMenu() {
+  // categories
+  const catDiv = document.getElementById('categories');
+  catDiv.innerHTML = '';
+  CATEGORIES.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (c === activeCategory ? ' active' : '');
+    btn.textContent = c;
+    btn.onclick = () => { activeCategory = c; renderMenu(); };
+    catDiv.appendChild(btn);
+  });
+
+  const grid = document.getElementById('menu-grid');
+  grid.innerHTML = '';
+  const filtered = activeCategory === 'All' ? MENU : MENU.filter(i => i.category === activeCategory);
+
+  filtered.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'food-card';
+    card.innerHTML = `
+      <div class="food-3d-thumb" id="thumb-wrap-${item.id}">
+        <canvas id="thumb-${item.id}" width="100" height="90"></canvas>
+      </div>
+      <div class="food-info">
+        <div class="food-name">${item.name} <span class="ar-badge">◉ AR</span></div>
+        <div class="food-desc">${item.desc.slice(0, 55)}…</div>
+        <div class="food-bottom">
+          <div class="food-price">₹${item.price}</div>
+          <button class="food-add" onclick="event.stopPropagation(); quickAdd(${item.id})">+</button>
+        </div>
+      </div>
+    `;
+    card.onclick = () => openDetail(item);
+    grid.appendChild(card);
+
+    // delay thumb init to let DOM render
+    setTimeout(() => {
+      const canvas = document.getElementById('thumb-' + item.id);
+      if (canvas && !thumbScenes[item.id]) {
+        thumbScenes[item.id] = createThumbRenderer(canvas, item.model, item.color);
+      }
+    }, 50 + filtered.indexOf(item) * 30);
+  });
+
+  updateCartCount();
+}
+
+// ══════════════════════════════════════════
+//  DETAIL VIEW
+// ══════════════════════════════════════════
+let detailModel = null;
+
+function openDetail(item) {
+  currentItem = item;
+  currentQty = 1;
+  document.getElementById('qty-val').textContent = 1;
+  document.getElementById('detail-head-title').textContent = item.name;
+  document.getElementById('detail-name').textContent = item.name;
+  document.getElementById('detail-sub').textContent = item.sub;
+  document.getElementById('detail-price').textContent = '₹' + item.price;
+  document.getElementById('detail-desc').textContent = item.desc;
+  document.getElementById('detail-tags').innerHTML = item.tags.map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('add-cart-btn').textContent = 'Add to Order';
+  document.getElementById('add-cart-btn').classList.remove('added');
+
+  showScreen('detail');
+
+  // cleanup prev
+  if (detailAnimId) cancelAnimationFrame(detailAnimId);
+  if (detailRenderer) detailRenderer.dispose();
+
+  const canvas = document.getElementById('detail-canvas');
+  detailRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  detailRenderer.setPixelRatio(window.devicePixelRatio);
+  detailRenderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+  detailRenderer.shadowMap.enabled = true;
+  detailRenderer.outputEncoding = THREE.sRGBEncoding;
+
+  detailScene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, canvas.offsetWidth/canvas.offsetHeight, .1, 100);
+  camera.position.set(0, 2, 6);
+  camera.lookAt(0, 0, 0);
+
+  detailScene.add(new THREE.AmbientLight('#ffffff', .5));
+  const dir = new THREE.DirectionalLight('#ffe0a0', 1.8);
+  dir.position.set(4, 6, 4); dir.castShadow = true; detailScene.add(dir);
+  const fill = new THREE.DirectionalLight('#6080ff', .5);
+  fill.position.set(-4, 2, -3); detailScene.add(fill);
+  const rim = new THREE.DirectionalLight('#ff8040', .4);
+  rim.position.set(2, -1, -5); detailScene.add(rim);
+
+  // ground glow
+  const glowG = new THREE.CircleGeometry(1.5,32);
+  const glow = new THREE.Mesh(glowG, new THREE.MeshBasicMaterial({ color: item.color, transparent: true, opacity: .12 }));
+  glow.rotation.x = -Math.PI/2; glow.position.y = -1.0; detailScene.add(glow);
+
+  detailModel = buildFoodModel(item.model, detailScene);
+  detailScene.add(detailModel);
+
+  let autoRotate = true, isDragging = false, lastX = 0;
+  canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; autoRotate = false; });
+  canvas.addEventListener('mousemove', e => { if (isDragging) { detailModel.rotation.y += (e.clientX - lastX) * .01; lastX = e.clientX; } });
+  canvas.addEventListener('mouseup', () => isDragging = false);
+  canvas.addEventListener('touchstart', e => { isDragging = true; lastX = e.touches[0].clientX; autoRotate = false; }, { passive: true });
+  canvas.addEventListener('touchmove', e => { if (isDragging) { detailModel.rotation.y += (e.touches[0].clientX - lastX) * .012; lastX = e.touches[0].clientX; } e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', () => isDragging = false);
+
+  let t = 0;
+  const animate = () => {
+    detailAnimId = requestAnimationFrame(animate);
+    if (autoRotate) detailModel.rotation.y += .008;
+    detailModel.position.y = Math.sin(t) * .06; t += .02;
+    detailRenderer.render(detailScene, camera);
+  };
+  animate();
+}
+
+function changeQty(d) {
+  currentQty = Math.max(1, currentQty + d);
+  document.getElementById('qty-val').textContent = currentQty;
+}
+
+function addToCart() {
+  if (!currentItem) return;
+  const existing = cart.find(c => c.id === currentItem.id);
+  if (existing) existing.qty += currentQty;
+  else cart.push({ ...currentItem, qty: currentQty });
+  updateCartCount();
+  const btn = document.getElementById('add-cart-btn');
+  btn.textContent = '✓ Added to Order';
+  btn.classList.add('added');
+  showToast(`${currentItem.name} added to order`);
+  setTimeout(() => { btn.textContent = 'Add to Order'; btn.classList.remove('added'); }, 2000);
+}
+
+function quickAdd(id) {
+  const item = MENU.find(m => m.id === id);
+  const existing = cart.find(c => c.id === id);
+  if (existing) existing.qty++;
+  else cart.push({ ...item, qty: 1 });
+  updateCartCount();
+  showToast(`${item.name} added!`);
+}
+
+// ══════════════════════════════════════════
+//  AR VIEW
+// ══════════════════════════════════════════
+async function openAR() {
+  if (!currentItem) return;
+  document.getElementById('ar-food-label').textContent = currentItem.name;
+  document.getElementById('ar-instructions').textContent = 'Move camera slowly to detect surface';
+  showScreen('ar');
+
+  const video = document.getElementById('ar-video');
+  const canvas = document.getElementById('ar-canvas');
+  const noCam = document.getElementById('no-camera-msg');
+
+  try {
+    arStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    video.srcObject = arStream;
+    noCam.style.display = 'none';
+
+    // wait for video to play
+    await new Promise(res => { video.onloadedmetadata = () => { video.play(); res(); }; });
+
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    arRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    arRenderer.setPixelRatio(window.devicePixelRatio);
+    arRenderer.setSize(w, h);
+    arRenderer.setClearColor(0x000000, 0);
+    arRenderer.outputEncoding = THREE.sRGBEncoding;
+
+    arScene = new THREE.Scene();
+    const arCamera = new THREE.PerspectiveCamera(60, w/h, .01, 100);
+    arCamera.position.set(0, 1.5, 3);
+    arCamera.lookAt(0, 0, 0);
+
+    arScene.add(new THREE.AmbientLight('#ffffff', .8));
+    const dirL = new THREE.DirectionalLight('#ffe0a0', 2);
+    dirL.position.set(3, 6, 3); arScene.add(dirL);
+
+    // shadow plane
+    const shadowG = new THREE.CircleGeometry(1.5, 32);
+    const shadowM = new THREE.Mesh(shadowG, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .18 }));
+    shadowM.rotation.x = -Math.PI/2; shadowM.position.y = -1.05; arScene.add(shadowM);
+
+    // glow ring
+    const glowRG = new THREE.RingGeometry(1.0, 1.5, 40);
+    const glowR = new THREE.Mesh(glowRG, new THREE.MeshBasicMaterial({ color: currentItem.color || '#d4882a', transparent: true, opacity: .2, side: THREE.DoubleSide }));
+    glowR.rotation.x = -Math.PI/2; glowR.position.y = -1.03; arScene.add(glowR);
+
+    const arModel = buildFoodModel(currentItem.model, arScene);
+    arModel.scale.set(1.1,1.1,1.1);
+    arScene.add(arModel);
+
+    let detected = false;
+    setTimeout(() => {
+      detected = true;
+      document.getElementById('ar-surface-ind').style.borderColor = 'rgba(100,220,100,.7)';
+      document.getElementById('ar-instructions').textContent = `${currentItem.name} placed on table • Drag to rotate`;
+    }, 2000);
+
+    // touch rotate
+    let lastTX = 0, isTouching = false;
+    canvas.addEventListener('touchstart', e => { isTouching = true; lastTX = e.touches[0].clientX; }, { passive: true });
+    canvas.addEventListener('touchmove', e => {
+      if (isTouching) { arModel.rotation.y += (e.touches[0].clientX - lastTX) * .015; lastTX = e.touches[0].clientX; }
+    }, { passive: true });
+    canvas.addEventListener('touchend', () => isTouching = false);
+    canvas.addEventListener('mousemove', e => { if (e.buttons === 1) arModel.rotation.y += e.movementX * .01; });
+
+    // device orientation
+    const handleOrientation = (e) => {
+      if (e.beta && e.gamma) {
+        arCamera.position.x = (e.gamma / 90) * 1.2;
+        arCamera.position.y = 1.5 - (e.beta - 90) / 90 * 0.8;
+        arCamera.lookAt(0, 0, 0);
+      }
+    };
+    if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', handleOrientation);
+
+    let arT = 0;
+    const arAnimate = () => {
+      arAnimId = requestAnimationFrame(arAnimate);
+      arModel.rotation.y += .006;
+      if (!detected) {
+        arModel.position.y = Math.sin(arT * 1.5) * 0.08 + 0.1;
+      } else {
+        arModel.position.y = Math.sin(arT) * 0.03;
+      }
+      arT += .02;
+      arRenderer.render(arScene, arCamera);
+    };
+    arAnimate();
+
+  } catch(err) {
+    noCam.style.display = 'flex';
+    console.warn('Camera error:', err);
+  }
+}
+
+function closeAR() {
+  if (arAnimId) cancelAnimationFrame(arAnimId);
+  if (arStream) { arStream.getTracks().forEach(t => t.stop()); arStream = null; }
+  if (arRenderer) { arRenderer.dispose(); arRenderer = null; }
+  const video = document.getElementById('ar-video');
+  video.srcObject = null;
+  showScreen('detail');
+}
+
+function snapAR() {
+  showToast('📸 AR snapshot saved!');
+  const canvas = document.getElementById('ar-canvas');
+  canvas.style.filter = 'brightness(2)';
+  setTimeout(() => canvas.style.filter = '', 200);
+}
+
+// ══════════════════════════════════════════
+//  CART
+// ══════════════════════════════════════════
+function renderCart() {
+  const itemsDiv = document.getElementById('cart-items');
+  const emptyDiv = document.getElementById('cart-empty');
+  const footer = document.getElementById('cart-footer');
+  itemsDiv.innerHTML = '';
+
+  if (cart.length === 0) {
+    emptyDiv.style.display = 'flex';
+    footer.style.display = 'none';
+    return;
+  }
+  emptyDiv.style.display = 'none';
+  footer.style.display = 'block';
+
+  cart.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'cart-item';
+    row.innerHTML = `
+      <div class="cart-item-thumb"><canvas id="cthmb-${item.id}" width="56" height="56"></canvas></div>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-price">₹${item.price} × ${item.qty} = ₹${item.price * item.qty}</div>
+      </div>
+      <div class="cart-item-qty">
+        <button class="cq-btn" onclick="cartQty(${item.id}, -1)">−</button>
+        <span>${item.qty}</span>
+        <button class="cq-btn" onclick="cartQty(${item.id}, 1)">+</button>
+      </div>
+    `;
+    itemsDiv.appendChild(row);
+    setTimeout(() => {
+      const c = document.getElementById('cthmb-' + item.id);
+      if (c) createThumbRenderer(c, item.model, item.color);
+    }, 50 * idx);
+  });
+
+  const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const tax = Math.round(sub * .05);
+  document.getElementById('cart-sub').textContent = '₹' + sub;
+  document.getElementById('cart-tax').textContent = '₹' + tax;
+  document.getElementById('cart-total').textContent = '₹' + (sub + tax);
+}
+
+function cartQty(id, d) {
+  const idx = cart.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  cart[idx].qty += d;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  updateCartCount();
+  renderCart();
+}
+
+function updateCartCount() {
+  const total = cart.reduce((s, i) => s + i.qty, 0);
+  const el = document.getElementById('cart-count');
+  el.textContent = total;
+  el.classList.toggle('visible', total > 0);
+}
+
+function placeOrder() {
+  const num = 'SAV-' + Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('order-num-val').textContent = num;
+  cart = [];
+  updateCartCount();
+  showScreen('confirm');
+}
+
+function resetAndGoHome() {
+  showScreen('menu');
+}
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+let toastTimeout;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ══════════════════════════════════════════
+//  RESIZE
+// ══════════════════════════════════════════
+window.addEventListener('resize', () => {
+  if (detailRenderer) {
+    const canvas = document.getElementById('detail-canvas');
+    detailRenderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+  }
+  if (arRenderer) {
+    const canvas = document.getElementById('ar-canvas');
+    arRenderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+  }
+});
+
+// init
+</script>
+</body>
+</html>
