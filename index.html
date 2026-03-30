@@ -209,7 +209,7 @@
     </div>
     <div class="qr-beam"></div>
   </div>
-  <button class="scan-btn" onclick="simulateScan()">Scan QR Code</button>
+  <button class="scan-btn" id="scan-btn">Scan QR Code</button>
   <div class="scan-hint">Point camera at table QR code</div>
 </div>
 
@@ -791,7 +791,7 @@ function addToCart() {
   if (!currentItem) return;
   const existing = cart.find(c => c.id === currentItem.id);
   if (existing) existing.qty += currentQty;
-  else cart.push({ ...currentItem, qty: currentQty });
+  else cart.push(Object.assign({}, currentItem, { qty: currentQty }));
   updateCartCount();
   const btn = document.getElementById('add-cart-btn');
   btn.textContent = '✓ Added to Order';
@@ -804,7 +804,7 @@ function quickAdd(id) {
   const item = MENU.find(m => m.id === id);
   const existing = cart.find(c => c.id === id);
   if (existing) existing.qty++;
-  else cart.push({ ...item, qty: 1 });
+  else cart.push(Object.assign({}, item, { qty: 1 }));
   updateCartCount();
   showToast(`${item.name} added!`);
 }
@@ -1060,6 +1060,7 @@ function initApp() {
 document.addEventListener('DOMContentLoaded', initApp);
 // fallback if DOMContentLoaded already fired
 if (document.readyState !== 'loading') initApp();
+document.getElementById('scan-btn').addEventListener('click', simulateScan);
 </script>
 </body>
 </html>
