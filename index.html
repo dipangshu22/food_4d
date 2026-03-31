@@ -509,70 +509,62 @@ function initThree(model){
   if(renderer){renderer.dispose();}
   const canvas=document.getElementById('ar-canvas');
   const W=window.innerWidth,H=window.innerHeight;
-  renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
   renderer.setSize(W,H);
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.physicallyCorrectLights=true;
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.15;
 
   scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(45,W/H,0.1,100);
-  camera.position.set(0,2,7);camera.lookAt(0,0,0);
+  camera=new THREE.PerspectiveCamera(42,W/H,0.1,100);
+  camera.position.set(0,2.5,7.5);camera.lookAt(0,0,0);
 
-  // Lights
-  scene.add(new THREE.AmbientLight(0xffffff,0.7));
-  const sun=new THREE.DirectionalLight(0xffe8d0,1.4);
-  sun.position.set(6,10,8);sun.castShadow=true;
-  sun.shadow.mapSize.width=1024;sun.shadow.mapSize.height=1024;
-  scene.add(sun);
-  const fillLight=new THREE.DirectionalLight(0x8ab4f8,0.5);fillLight.position.set(-6,3,-4);scene.add(fillLight);
-  const rim=new THREE.PointLight(0xff6622,0.6,20);rim.position.set(0,6,-5);scene.add(rim);
+  // Restaurant-quality 4-point lighting
+  scene.add(new THREE.AmbientLight(0xfff5e4,0.45));
+  const key=new THREE.DirectionalLight(0xffe8c8,3.2);
+  key.position.set(5,14,7);key.castShadow=true;
+  key.shadow.mapSize.width=2048;key.shadow.mapSize.height=2048;
+  key.shadow.camera.near=0.5;key.shadow.camera.far=60;
+  key.shadow.camera.left=-8;key.shadow.camera.right=8;
+  key.shadow.camera.top=8;key.shadow.camera.bottom=-8;
+  key.shadow.radius=8;key.shadow.bias=-0.001;
+  scene.add(key);
+  const fill=new THREE.DirectionalLight(0xc8deff,1.0);fill.position.set(-6,3,7);scene.add(fill);
+  const rim=new THREE.DirectionalLight(0xff9944,0.85);rim.position.set(0,5,-8);scene.add(rim);
+  const bounce=new THREE.PointLight(0xffdd88,0.65,14);bounce.position.set(0,-0.5,3);scene.add(bounce);
 
   // AR Floor grid
-  const grid=new THREE.GridHelper(12,24,0x00e5ff,0x00e5ff);
-  grid.material.opacity=0.2;grid.material.transparent=true;
+  const grid=new THREE.GridHelper(14,28,0x00e5ff,0x00e5ff);
+  grid.material.opacity=0.12;grid.material.transparent=true;
   grid.position.y=-2.2;scene.add(grid);
 
   // Shadow plane
-  const sp=new THREE.Mesh(new THREE.PlaneGeometry(12,12),new THREE.ShadowMaterial({opacity:0.3}));
+  const sp=new THREE.Mesh(new THREE.PlaneGeometry(14,14),new THREE.ShadowMaterial({opacity:0.45}));
   sp.rotation.x=-Math.PI/2;sp.position.y=-2.2;sp.receiveShadow=true;scene.add(sp);
 
   // Blob shadow under food
-  const blob=new THREE.Mesh(new THREE.CircleGeometry(1.2,32),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35}));
-  blob.rotation.x=-Math.PI/2;blob.position.y=-2.18;scene.add(blob);
+  const blob=new THREE.Mesh(new THREE.CircleGeometry(1.5,44),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.38}));
+  blob.rotation.x=-Math.PI/2;blob.position.y=-2.19;scene.add(blob);
 
-  // Food model
-  foodGroup=new THREE.Group();
-  foodScale=1;
-  const m=buildModel(model);
-  foodGroup.add(m);
+  foodGroup=new THREE.Group();foodScale=1;
+  foodGroup.add(buildModel(model));
   scene.add(foodGroup);
 
-  // Entry animation
   foodGroup.scale.setScalar(0);
   let entry=0;
-  function entryAnim(){
-    entry+=0.05;
-    const s=Math.min(1,entry*entry*(3-2*entry)); // smoothstep
-    foodGroup.scale.setScalar(s);
-    if(entry<1)requestAnimationFrame(entryAnim);
-  }
+  function entryAnim(){entry+=0.045;const s=Math.min(1,entry*entry*(3-2*entry));foodGroup.scale.setScalar(s);if(entry<1)requestAnimationFrame(entryAnim);}
   entryAnim();
-
-  // Particles
   addParticles();
-
-  // Controls
   setupPointerControls(canvas);
   startLoop();
 }
 
 function startLoop(){
-  function loop(){
-    animId=requestAnimationFrame(loop);
-    if(autoSpin&&foodGroup)foodGroup.rotation.y+=0.007;
-    renderer&&renderer.render(scene,camera);
-  }
+  function loop(){animId=requestAnimationFrame(loop);if(autoSpin&&foodGroup)foodGroup.rotation.y+=0.006;renderer&&renderer.render(scene,camera);}
   loop();
 }
 
@@ -580,21 +572,12 @@ function setupPointerControls(canvas){
   let lastPinchDist=0;
   canvas.addEventListener('mousedown',e=>{dragging=true;autoSpin=false;prevXY={x:e.clientX,y:e.clientY};});
   window.addEventListener('mouseup',()=>{dragging=false;setTimeout(()=>autoSpin=true,2500);});
-  window.addEventListener('mousemove',e=>{
-    if(!dragging||!foodGroup)return;
-    foodGroup.rotation.y+=(e.clientX-prevXY.x)*0.012;
-    foodGroup.rotation.x+=(e.clientY-prevXY.y)*0.012;
-    prevXY={x:e.clientX,y:e.clientY};
-  });
+  window.addEventListener('mousemove',e=>{if(!dragging||!foodGroup)return;foodGroup.rotation.y+=(e.clientX-prevXY.x)*0.012;foodGroup.rotation.x+=(e.clientY-prevXY.y)*0.012;prevXY={x:e.clientX,y:e.clientY};});
   canvas.addEventListener('touchstart',e=>{dragging=true;autoSpin=false;prevXY={x:e.touches[0].clientX,y:e.touches[0].clientY};if(e.touches.length===2)lastPinchDist=pinchDist(e);},{passive:true});
   canvas.addEventListener('touchend',()=>{dragging=false;setTimeout(()=>autoSpin=true,2500);});
   canvas.addEventListener('touchmove',e=>{
     if(!foodGroup)return;
-    if(e.touches.length===2){
-      const d=pinchDist(e);
-      if(lastPinchDist){const delta=(d-lastPinchDist)*0.01;foodScale=Math.max(0.4,Math.min(2.5,foodScale+delta));foodGroup.scale.setScalar(foodScale);}
-      lastPinchDist=d;return;
-    }
+    if(e.touches.length===2){const d=pinchDist(e);if(lastPinchDist){const delta=(d-lastPinchDist)*0.01;foodScale=Math.max(0.4,Math.min(2.5,foodScale+delta));foodGroup.scale.setScalar(foodScale);}lastPinchDist=d;return;}
     if(!dragging)return;
     foodGroup.rotation.y+=(e.touches[0].clientX-prevXY.x)*0.012;
     foodGroup.rotation.x+=(e.touches[0].clientY-prevXY.y)*0.012;
@@ -607,23 +590,30 @@ function resetFood(){foodScale=1;if(foodGroup){foodGroup.scale.setScalar(1);food
 
 function addParticles(){
   const geo=new THREE.BufferGeometry();
-  const n=80,pos=new Float32Array(n*3);
-  for(let i=0;i<n;i++){pos[i*3]=(Math.random()-0.5)*6;pos[i*3+1]=Math.random()*4-1;pos[i*3+2]=(Math.random()-0.5)*6;}
+  const n=100,pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){pos[i*3]=(Math.random()-0.5)*7;pos[i*3+1]=Math.random()*5-1.5;pos[i*3+2]=(Math.random()-0.5)*7;}
   geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const mat=new THREE.PointsMaterial({color:0x00e5ff,size:0.06,transparent:true,opacity:0.5});
-  const pts=new THREE.Points(geo,mat);
-  scene.add(pts);
-  function floatPts(){requestAnimationFrame(floatPts);if(!scene)return;const p=geo.attributes.position.array;for(let i=0;i<n;i++){p[i*3+1]+=0.008;if(p[i*3+1]>3)p[i*3+1]=-1;}geo.attributes.position.needsUpdate=true;}
+  const mat=new THREE.PointsMaterial({color:0x00e5ff,size:0.055,transparent:true,opacity:0.45});
+  const pts=new THREE.Points(geo,mat);scene.add(pts);
+  function floatPts(){requestAnimationFrame(floatPts);if(!scene)return;const p=geo.attributes.position.array;for(let i=0;i<n;i++){p[i*3+1]+=0.007;if(p[i*3+1]>3.5)p[i*3+1]=-1.5;}geo.attributes.position.needsUpdate=true;}
   floatPts();
 }
 
 // ═══════════════════════════════════════
-//  3D FOOD MODELS
+//  MATERIAL HELPERS
 // ═══════════════════════════════════════
+// Standard PBR material
 function M(color,rough=0.75,metal=0.05,emissive=0){
-  return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive:emissive?new THREE.Color(emissive):undefined,emissiveIntensity:emissive?0.15:0});
+  return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,
+    emissive:emissive?new THREE.Color(emissive):undefined,emissiveIntensity:emissive?0.12:0});
 }
-function mk(geo,mat){const m=new THREE.Mesh(geo,mat);m.castShadow=true;return m;}
+// Physical material — clearcoat for wet/glazed/ceramic/glossy surfaces
+function MP(color,rough=0.2,metal=0,cc=0.9,ccR=0.1,emissive=0,alpha=1){
+  return new THREE.MeshPhysicalMaterial({color,roughness:rough,metalness:metal,
+    clearcoat:cc,clearcoatRoughness:ccR,transparent:alpha<1,opacity:alpha,
+    emissive:emissive?new THREE.Color(emissive):undefined,emissiveIntensity:emissive?0.1:0});
+}
+function mk(geo,mat){const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receiveShadow=true;return m;}
 
 function buildModel(type){
   const g=new THREE.Group();
@@ -633,241 +623,359 @@ function buildModel(type){
 
 // ── BIRYANI ──
 function buildBiryani(g){
-  g.position.y=-0.6;
-  // Pot base
-  const pot=mk(new THREE.CylinderGeometry(1.4,1.0,1.5,32,1,true),M(0x2C1A0E,0.9));
-  g.add(pot);
-  const potBase=mk(new THREE.CylinderGeometry(1.0,0.9,0.12,32),M(0x2C1A0E,0.9));
-  potBase.position.y=-0.81;g.add(potBase);
-  // Rice layers
-  const rice=mk(new THREE.CylinderGeometry(1.35,1.35,0.5,32),M(0xF5E6C0,0.8));
-  rice.position.y=0.75;g.add(rice);
-  // Saffron color patches on rice
-  for(let i=0;i<6;i++){
-    const patch=mk(new THREE.SphereGeometry(0.28,10,10),M(0xFF9900,0.7));
-    patch.scale.y=0.15;const a=i*1.05;
-    patch.position.set(Math.cos(a)*0.75,1.01,Math.sin(a)*0.65);g.add(patch);
-  }
-  // Fried onion strips
-  for(let i=0;i<10;i++){
-    const on=mk(new THREE.CylinderGeometry(0.04,0.04,0.35+Math.random()*0.2,6),M(0xA0522D,0.9));
-    on.rotation.set(Math.random()*0.8-0.4,Math.random()*Math.PI,Math.random()*0.4-0.2);
-    on.position.set(Math.random()*1.1-0.55,1.02+Math.random()*0.15,Math.random()*1.0-0.5);g.add(on);
-  }
-  // Chicken pieces
-  [[0.5,1.1,-0.3],[-0.6,1.08,0.35],[0,1.1,0.6]].forEach(([x,y,z])=>{
-    const ch=mk(new THREE.SphereGeometry(0.28,12,12),M(0x8B3A0A,0.85));
-    ch.scale.set(1.5,0.7,1.2);ch.position.set(x,y,z);g.add(ch);
-    // Char marks
-    const c=mk(new THREE.SphereGeometry(0.1,6,6),M(0x3A1A04,0.9));c.scale.set(1.2,0.3,1);c.position.set(x,y+0.12,z);g.add(c);
+  g.position.y=-0.8;
+  // Hammered copper-brass pot
+  const potMat=MP(0x8B5520,0.32,0.68,0.65,0.18);
+  const pot=mk(new THREE.CylinderGeometry(1.5,1.1,1.9,44,1,true),potMat);g.add(pot);
+  const potBase=mk(new THREE.CylinderGeometry(1.1,1.0,0.15,40),potMat);potBase.position.y=-1.02;g.add(potBase);
+  const potRim=mk(new THREE.TorusGeometry(1.5,0.1,12,44),potMat);potRim.rotation.x=Math.PI/2;potRim.position.y=0.96;g.add(potRim);
+  // Hammered dimples on pot
+  for(let i=0;i<22;i++){const b=mk(new THREE.SphereGeometry(0.055,7,7),MP(0x6E4018,0.45,0.62,0.5,0.25));const a=i*(Math.PI*2/22);b.position.set(Math.cos(a)*1.53,(Math.random()-0.5)*1.4,Math.sin(a)*1.53);b.scale.z=0.25;g.add(b);}
+  // Pot handles
+  for(let s=0;s<2;s++){const h=mk(new THREE.TorusGeometry(0.22,0.06,8,18,Math.PI),potMat);h.rotation.y=s*Math.PI;h.position.set(s?-1.56:1.56,0.55,0);g.add(h);}
+  // Rice surface
+  const rice=mk(new THREE.CylinderGeometry(1.44,1.44,0.18,44),MP(0xF5E8B2,0.82,0,0.08,0.5));rice.position.y=0.97;g.add(rice);
+  // Rice grains (many tiny elongated spheres at surface)
+  for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2,r=Math.random()*1.3;const gc=Math.random()>0.72?0xFF9500:Math.random()>0.5?0xEED89A:0xF5E8B8;const gr=mk(new THREE.SphereGeometry(0.042+Math.random()*0.026,5,5),M(gc,0.85));gr.scale.set(1.6+Math.random()*0.5,0.62,1.1+Math.random()*0.4);gr.rotation.y=Math.random()*Math.PI;gr.position.set(Math.cos(a)*r,1.05+Math.random()*0.15,Math.sin(a)*r);g.add(gr);}
+  // Vibrant saffron patches
+  for(let i=0;i<6;i++){const a=i*1.05;const r=0.44+Math.random()*0.58;const saf=mk(new THREE.CylinderGeometry(0.2,0.2,0.06,18),MP(i%2?0xFF9200:0xFFCC00,0.62,0,0.22,0.08));saf.position.set(Math.cos(a)*r,1.05,Math.sin(a)*r);g.add(saf);}
+  // Fried caramelized onion strips
+  for(let i=0;i<18;i++){const on=mk(new THREE.CylinderGeometry(0.024+Math.random()*0.018,0.017,0.44+Math.random()*0.28,6),MP(0x9A4A20,0.8,0,0.15));on.rotation.set(Math.PI/2+Math.random()*0.85-0.42,Math.random()*Math.PI,Math.random()*0.7-0.35);on.position.set(Math.random()*1.28-0.64,1.09+Math.random()*0.22,Math.random()*1.18-0.59);g.add(on);}
+  // Chicken pieces with spice coating & char marks
+  [[0.55,1.2,-0.42],[-0.68,1.16,0.44],[0.06,1.2,0.72],[-0.38,1.14,-0.68]].forEach(([x,y,z])=>{
+    const c=mk(new THREE.SphereGeometry(0.27,16,16),MP(0x7A2E08,0.7,0,0.32,0.14));c.scale.set(1.65,0.65,1.32);c.position.set(x,y,z);g.add(c);
+    const coat=mk(new THREE.SphereGeometry(0.26,14,14),M(0x3A1204,0.9));coat.scale.set(1.75,0.44,1.42);coat.position.set(x,y+0.08,z);g.add(coat);
+    for(let i=0;i<3;i++){const cm=mk(new THREE.SphereGeometry(0.048,6,6),M(0x1A0800,0.95));cm.scale.set(1.9,0.17,0.85);cm.position.set(x+Math.random()*0.1-0.05,y+0.11,z+Math.random()*0.1-0.05);g.add(cm);}
   });
-  // Mint leaves
-  for(let i=0;i<8;i++){
-    const l=mk(new THREE.SphereGeometry(0.08,6,6),M(0x228B22,0.85));
-    l.scale.set(1.6,0.25,1);l.position.set(Math.random()*1.1-0.55,1.14+Math.random()*0.05,Math.random()*1.0-0.5);g.add(l);
-  }
-  // Pot lid leaning aside
-  const lid=mk(new THREE.CylinderGeometry(1.42,1.42,0.1,32),M(0x3C2010,0.8,0.1));
-  lid.position.set(2.0,0.5,0);lid.rotation.z=Math.PI/4;g.add(lid);
-  const knob=mk(new THREE.SphereGeometry(0.18,12,12),M(0xC0A020,0.5,0.4));
-  knob.position.set(2.0,0.82,0);g.add(knob);
+  // Bright mint leaves
+  for(let i=0;i<14;i++){const l=mk(new THREE.SphereGeometry(0.09,7,7),M(0x1FAD1F,0.72));l.scale.set(1.9,0.2,1.35);l.rotation.y=Math.random()*Math.PI;l.position.set(Math.random()*1.28-0.64,1.23+Math.random()*0.06,Math.random()*1.18-0.59);g.add(l);}
+  // Whole spices (cardamom pods, cloves)
+  for(let i=0;i<8;i++){const sp=mk(new THREE.CylinderGeometry(0.032,0.024,0.15,7),M(0x2E1A08,0.9));sp.position.set(Math.random()*1.1-0.55,1.22,Math.random()*1.0-0.5);sp.rotation.set(Math.random()*0.6,Math.random()*Math.PI,Math.random()*0.3);g.add(sp);}
+  // Copper lid leaning, with condensation
+  const lid=mk(new THREE.CylinderGeometry(1.54,1.54,0.14,44),MP(0x5A3015,0.28,0.72,0.85,0.12));lid.position.set(2.3,0.65,0.2);lid.rotation.set(0,0.1,Math.PI/4+0.1);g.add(lid);
+  const knob=mk(new THREE.SphereGeometry(0.22,16,16),MP(0xD4A020,0.08,0.92,1.0,0.04));knob.position.set(2.3,1.0,0.2);g.add(knob);
+  for(let i=0;i<6;i++){const drop=mk(new THREE.SphereGeometry(0.038,7,7),MP(0xBBCCEE,0.05,0,1.0,0.02,0,0.65));drop.position.set(2.08+Math.random()*0.5,0.7+Math.random()*0.4,Math.random()*0.35);g.add(drop);}
 }
 
 // ── BUTTER CHICKEN ──
 function buildCurry(g){
-  g.position.y=-0.6;
-  // Bowl
-  const bowl=mk(new THREE.CylinderGeometry(1.55,1.0,1.1,32,1,true),M(0xE8D5B0,0.6,0.05));
-  g.add(bowl);
-  const bowlBase=mk(new THREE.CylinderGeometry(1.0,0.9,0.1,32),M(0xE8D5B0,0.6));
-  bowlBase.position.y=-0.6;g.add(bowlBase);
-  // Curry
-  const curry=mk(new THREE.CylinderGeometry(1.48,1.48,0.18,32),M(0xE05010,0.5,0.05,0xFF5500));
-  curry.position.y=0.5;g.add(curry);
-  // Cream swirl
-  for(let i=0;i<3;i++){
-    const cr=mk(new THREE.TorusGeometry(0.4-i*0.1,0.07,6,20,Math.PI*1.5),M(0xFFF8F0,0.4));
-    cr.rotation.x=Math.PI/2;cr.position.set(0.2,0.62,0);g.add(cr);
-  }
-  // Chicken pieces
-  [[-0.5,0.68,-0.3],[0.5,0.68,0.3],[0,0.68,0.6]].forEach(([x,y,z])=>{
-    const c=mk(new THREE.SphereGeometry(0.3,12,12),M(0x8B3A0A,0.8));
-    c.scale.set(1.4,0.7,1.1);c.position.set(x,y,z);g.add(c);
+  g.position.y=-0.65;
+  // White ceramic bowl with high clearcoat
+  const bowlMat=MP(0xF8F2E8,0.12,0.0,1.0,0.06);
+  const bowl=mk(new THREE.CylinderGeometry(1.62,1.06,1.18,48,1,true),bowlMat);g.add(bowl);
+  const bowlBase=mk(new THREE.CylinderGeometry(1.06,0.96,0.12,44),bowlMat);bowlBase.position.y=-0.65;g.add(bowlBase);
+  const bRim=mk(new THREE.TorusGeometry(1.62,0.09,12,48),bowlMat);bRim.rotation.x=Math.PI/2;bRim.position.y=0.62;g.add(bRim);
+  // Deep makhani curry — glossy rich orange-red
+  const curryMat=MP(0xD54010,0.22,0,0.92,0.07,0xBB2A00);
+  const curry=mk(new THREE.CylinderGeometry(1.54,1.54,0.24,48),curryMat);curry.position.y=0.55;g.add(curry);
+  // Ghee pool (golden oil sheen)
+  const ghee=mk(new THREE.CylinderGeometry(0.52,0.52,0.015,28),MP(0xFF9D00,0.04,0,1.0,0.01,0,0.55));ghee.position.set(0.3,0.68,0.18);g.add(ghee);
+  // Cream swirl (concentric arcs)
+  for(let i=0;i<4;i++){const cr=mk(new THREE.TorusGeometry(0.37-i*0.07,0.06-i*0.007,9,28,Math.PI*(1.6-i*0.12)),MP(0xFFF5F0,0.18,0,0.85,0.08));cr.rotation.x=Math.PI/2;cr.position.set(0.18,0.67+i*0.005,0.05);g.add(cr);}
+  const ctip=mk(new THREE.SphereGeometry(0.065,9,9),MP(0xFFFFFF,0.18,0,0.9,0.04));ctip.position.set(0.52,0.67,0.32);g.add(ctip);
+  // Chicken tikka pieces with sauce coating
+  [[-0.52,0.74,-0.38],[0.56,0.74,0.32],[-0.05,0.76,0.62],[0.42,0.74,-0.56]].forEach(([x,y,z])=>{
+    const c=mk(new THREE.SphereGeometry(0.29,16,16),MP(0x7A3008,0.68,0,0.32,0.14));c.scale.set(1.52,0.68,1.24);c.position.set(x,y,z);g.add(c);
+    const sc=mk(new THREE.SphereGeometry(0.28,14,14),MP(0xBB3808,0.25,0,0.65,0.1,0,0.72));sc.scale.set(1.58,0.54,1.28);sc.position.set(x,y+0.07,z);g.add(sc);
   });
-  // Coriander
-  for(let i=0;i<10;i++){
-    const l=mk(new THREE.SphereGeometry(0.06,6,6),M(0x1E8B1E,0.9));
-    l.scale.set(1.5,0.2,1);l.position.set(Math.random()*1.0-0.5,0.72,Math.random()*0.9-0.45);g.add(l);
-  }
-  // Naan bread leaning
-  const naan=mk(new THREE.SphereGeometry(1.0,16,16),M(0xD4A030,0.85));
-  naan.scale.set(1,0.06,1.3);naan.position.set(2.1,0.1,0);naan.rotation.z=0.6;g.add(naan);
-  // Char on naan
-  for(let i=0;i<4;i++){const c=mk(new THREE.SphereGeometry(0.15,8,8),M(0x5A2A00,0.95));c.scale.set(2,0.06,0.8);c.position.set(2.0+Math.random()*0.4-0.2,0.16,Math.random()*0.6-0.3);g.add(c);}
+  // Kashmiri chili & coriander garnish
+  for(let i=0;i<14;i++){const l=mk(new THREE.SphereGeometry(0.052,6,6),M(i%3===0?0xFF2200:0x1E9A1E,0.82));l.scale.set(1.6,0.18,1.2);l.position.set(Math.random()*1.1-0.55,0.78,Math.random()*1.0-0.5);g.add(l);}
+  // Butter dollop
+  const butter=mk(new THREE.SphereGeometry(0.12,10,10),MP(0xFFE88A,0.2,0,0.9,0.08));butter.scale.set(1.3,0.55,1.1);butter.position.set(-0.5,0.7,-0.2);g.add(butter);
+  // Naan bread leaning with puffs and char
+  const naan=mk(new THREE.SphereGeometry(1.02,22,22),MP(0xD4A030,0.74,0,0.22,0.38));naan.scale.set(1.06,0.064,1.38);naan.position.set(2.2,0.18,0);naan.rotation.z=0.55;g.add(naan);
+  for(let i=0;i<5;i++){const puff=mk(new THREE.SphereGeometry(0.15+Math.random()*0.1,10,10),MP(0xC8902A,0.7,0,0.15));puff.scale.set(1.5,0.22,1.2);puff.position.set(2.0+Math.random()*0.5-0.25,0.22,Math.random()*0.6-0.3);g.add(puff);}
+  for(let i=0;i<4;i++){const c=mk(new THREE.SphereGeometry(0.1,8,8),M(0x3A1A00,0.95));c.scale.set(2.4,0.14,0.9);c.position.set(1.9+Math.random()*0.5,0.22,Math.random()*0.6-0.3);g.add(c);}
+  for(let i=0;i<10;i++){const s=mk(new THREE.SphereGeometry(0.022,5,5),M(0x111111,0.9));s.position.set(2.0+Math.random()*0.5-0.2,0.25,Math.random()*0.55-0.27);g.add(s);}
 }
 
-// ── DOSA ──
+// ── MASALA DOSA ──
 function buildDosa(g){
   g.position.y=-0.4;
-  // Dosa (flat cone/rolled shape)
-  const dosa=mk(new THREE.ConeGeometry(0.5,3.0,20),M(0xD4A030,0.8));
-  dosa.rotation.z=Math.PI/2.2;dosa.position.set(-0.5,0.3,0);g.add(dosa);
-  // Crispy texture lines
-  for(let i=0;i<6;i++){
-    const l=mk(new THREE.CylinderGeometry(0.02,0.02,2.5,6),M(0xA06020,0.9));
-    l.rotation.z=Math.PI/2.2;l.position.set(-0.5+i*0.1,0.3+i*0.05,Math.random()*0.2-0.1);g.add(l);
-  }
-  // Filling peeking out
-  const fill=mk(new THREE.SphereGeometry(0.6,12,12),M(0xFFD060,0.8));
-  fill.scale.set(1,0.5,0.8);fill.position.set(0.9,0.2,0);g.add(fill);
-  // Potato pieces
-  for(let i=0;i<5;i++){const p=mk(new THREE.SphereGeometry(0.15,8,8),M(0xFFD060,0.8));p.position.set(0.7+Math.random()*0.5,0.2+Math.random()*0.3,Math.random()*0.5-0.25);g.add(p);}
-  // Three chutneys (small bowls)
-  [[-1.4,-0.1,0.8],[-1.4,-0.1,0],[-1.4,-0.1,-0.8]].forEach(([x,y,z],i)=>{
-    const b=mk(new THREE.CylinderGeometry(0.38,0.28,0.22,20),M(0xF0DCA0,0.6));b.position.set(x,y,z);g.add(b);
-    const cols=[0x00AA44,0xCC3300,0xF5F5F5];
-    const c=mk(new THREE.CylinderGeometry(0.34,0.34,0.08,20),M(cols[i],0.5));c.position.set(x,y+0.15,z);g.add(c);
+  // Steel thali plate
+  const plateMat=MP(0xE0E0D8,0.12,0.92,0.92,0.08);
+  const plate=mk(new THREE.CylinderGeometry(2.25,2.25,0.07,48),plateMat);plate.position.y=-0.12;g.add(plate);
+  const pRim=mk(new THREE.TorusGeometry(2.25,0.06,9,48),plateMat);pRim.rotation.x=Math.PI/2;pRim.position.y=-0.09;g.add(pRim);
+  // Crispy golden dosa crepe
+  const dosaMat=MP(0xD4A030,0.76,0,0.25,0.42);
+  const dosa=mk(new THREE.ConeGeometry(0.5,3.1,26),dosaMat);dosa.rotation.z=Math.PI/2.2;dosa.position.set(-0.5,0.36,0);g.add(dosa);
+  // Toasted underside
+  const dosaBot=mk(new THREE.ConeGeometry(0.48,3.1,26),MP(0xBB8020,0.7,0,0.2));dosaBot.rotation.z=Math.PI/2.2;dosaBot.position.set(-0.5,0.25,0);g.add(dosaBot);
+  // Crispy texture lines on dosa
+  for(let i=0;i<10;i++){const l=mk(new THREE.CylinderGeometry(0.013,0.013,2.6+Math.random()*0.4,5),M(0x9A5818,0.9));l.rotation.z=Math.PI/2.2;l.position.set(-0.5+i*0.07,0.36+i*0.04,Math.random()*0.14-0.07);g.add(l);}
+  // Lacy crispy edge bits
+  for(let i=0;i<20;i++){const e=mk(new THREE.SphereGeometry(0.036+Math.random()*0.028,6,6),MP(0xD4A030,0.78,0,0.2));e.scale.set(0.8,0.28,0.8);const t=i/20;e.position.set(-1.12+t*1.55,0.3+Math.random()*0.08,(Math.random()-0.5)*0.85+t*0.1);g.add(e);}
+  // Potato masala filling
+  const fill=mk(new THREE.SphereGeometry(0.68,16,16),MP(0xFFD050,0.68,0,0.15));fill.scale.set(1.1,0.48,0.88);fill.position.set(0.94,0.26,0);g.add(fill);
+  for(let i=0;i<8;i++){const p=mk(new THREE.SphereGeometry(0.12+Math.random()*0.055,8,8),MP(0xF5C840,0.7,0,0.12));p.scale.set(1.1,0.78,1.0);p.position.set(0.72+Math.random()*0.55,0.22+Math.random()*0.35,Math.random()*0.55-0.27);g.add(p);}
+  // Mustard seeds, curry leaves
+  for(let i=0;i<14;i++){const ms=mk(new THREE.SphereGeometry(0.022,5,5),M(0x222200,0.9));ms.position.set(0.7+Math.random()*0.62,0.26+Math.random()*0.3,Math.random()*0.42-0.21);g.add(ms);}
+  for(let i=0;i<5;i++){const cl=mk(new THREE.SphereGeometry(0.052,6,6),M(0x1A6A18,0.82));cl.scale.set(1.8,0.18,1.0);cl.position.set(0.76+i*0.12,0.4,Math.random()*0.28-0.14);g.add(cl);}
+  // Three chutney bowls (coconut, tomato, sambar)
+  [[-1.4,-0.05,0.8],[-1.4,-0.05,0],[-1.4,-0.05,-0.8]].forEach(([x,y,z],i)=>{
+    const bm=MP(0xF5EDD0,0.25,0,0.92,0.09);
+    const b=mk(new THREE.CylinderGeometry(0.39,0.29,0.25,28),bm);b.position.set(x,y,z);g.add(b);
+    const rC=mk(new THREE.TorusGeometry(0.39,0.032,8,28),bm);rC.rotation.x=Math.PI/2;rC.position.set(x,y+0.13,z);g.add(rC);
+    const cols=[0xF2F2EE,0xCC3300,0xAA6022];const emits=[0,0xAA2200,0x882800];
+    const cont=mk(new THREE.CylinderGeometry(0.35,0.35,0.1,28),MP(cols[i],0.18,0,0.88,0.07,emits[i]));cont.position.set(x,y+0.18,z);g.add(cont);
+    if(i===0){const coc=mk(new THREE.SphereGeometry(0.038,5,5),M(0xF5F0E0,0.9));coc.scale.set(1.4,0.28,1.0);coc.position.set(x,y+0.25,z);g.add(coc);}
+    if(i===2){const cur=mk(new THREE.SphereGeometry(0.024,5,5),M(0x1A6A18,0.85));cur.position.set(x+0.07,y+0.25,z);g.add(cur);}
   });
 }
 
-// ── SUSHI ──
+// ── DRAGON SUSHI ROLL ──
 function buildSushi(g){
-  g.position.y=-0.6;
-  // Plate
-  const plate=mk(new THREE.CylinderGeometry(2.1,2.1,0.1,40),M(0xF8F4EE,0.3,0.1));g.add(plate);
-  const rim=mk(new THREE.TorusGeometry(2.1,0.1,8,40),M(0xEEE9E0,0.3));rim.rotation.x=Math.PI/2;rim.position.y=0.05;g.add(rim);
-  // Sushi rolls grid
-  const positions=[[-1.2,0,-0.5],[-0.3,0,-0.5],[0.6,0,-0.5],[-0.75,0,0.5],[0.15,0,0.5],[1.05,0,0.5]];
-  const fillings=[0xFF7744,0xFF5533,0xFF9933,0x33AA66,0x4488FF,0xAA44CC];
+  g.position.y=-0.7;
+  // White ceramic plate — very glossy
+  const plateMat=MP(0xFAF8F5,0.07,0.0,1.0,0.03);
+  const plate=mk(new THREE.CylinderGeometry(2.18,2.18,0.13,52),plateMat);g.add(plate);
+  const pRim=mk(new THREE.TorusGeometry(2.18,0.13,12,52),plateMat);pRim.rotation.x=Math.PI/2;pRim.position.y=0.065;g.add(pRim);
+  // Bamboo mat strips
+  const bamMat=M(0xCDB880,0.88);
+  for(let i=0;i<9;i++){const bar=mk(new THREE.BoxGeometry(4.0,0.04,0.2),bamMat);bar.position.set(0,0.075,i*0.24-0.96);g.add(bar);}
+  // 6 sushi rolls
+  const positions=[[-1.22,0,-0.52],[-0.3,0,-0.52],[0.62,0,-0.52],[-0.76,0,0.52],[0.16,0,0.52],[1.06,0,0.52]];
+  const fillings=[0xFF7744,0xFF4422,0xFF9922,0x33BB66,0x5599FF,0xCC44AA];
+  const tops=[0xFF8855,0xFF5533,0xFFAA33,0x44CC77,0x66AAFF,0xDD55BB];
   positions.forEach(([x,y,z],i)=>{
-    const nori=mk(new THREE.CylinderGeometry(0.48,0.48,0.82,20),M(0x1A2A1A,0.9));nori.position.set(x,y+0.51,z);g.add(nori);
-    const rice=mk(new THREE.CylinderGeometry(0.4,0.4,0.84,20),M(0xF5F0E0,0.8));rice.position.set(x,y+0.51,z);g.add(rice);
-    const fill=mk(new THREE.CylinderGeometry(0.16,0.16,0.85,10),M(fillings[i],0.6));fill.position.set(x,y+0.51,z);g.add(fill);
+    const nori=mk(new THREE.CylinderGeometry(0.5,0.5,0.9,28),MP(0x141E14,0.86,0.06,0.42,0.28));nori.position.set(x,y+0.56,z);g.add(nori);
+    const rice=mk(new THREE.CylinderGeometry(0.42,0.42,0.92,28),M(0xF5EFE0,0.78));rice.position.set(x,y+0.56,z);g.add(rice);
+    const fill=mk(new THREE.CylinderGeometry(0.17,0.17,0.93,14),MP(fillings[i],0.52,0,0.45));fill.position.set(x,y+0.56,z);g.add(fill);
+    // Top topping slice
+    const top=mk(new THREE.CylinderGeometry(0.44,0.44,0.12,28),MP(tops[i],0.32,0,0.75,0.07));top.position.set(x,y+1.03,z);g.add(top);
     // Sesame seeds
-    for(let j=0;j<4;j++){const s=mk(new THREE.SphereGeometry(0.04,6,6),M(0xF0E8C8,0.9));s.position.set(x+Math.cos(j*1.6)*0.18,y+0.95,z+Math.sin(j*1.6)*0.18);g.add(s);}
+    for(let j=0;j<7;j++){const s=mk(new THREE.SphereGeometry(0.032,5,5),M(0xEFE3C0,0.85));s.position.set(x+Math.cos(j*0.9)*0.22,y+1.08,z+Math.sin(j*0.9)*0.22);g.add(s);}
+    // Spicy mayo drizzle
+    if(i%2===0){const mayo=mk(new THREE.TorusGeometry(0.14,0.028,7,20,Math.PI*1.2),MP(0xFFCC00,0.28,0,0.85,0.04));mayo.rotation.x=Math.PI/2;mayo.position.set(x,y+1.07,z);g.add(mayo);}
+    // Soy glaze shine
+    const glaze=mk(new THREE.CylinderGeometry(0.51,0.51,0.04,28),MP(0xAA6600,0.12,0,0.95,0.03,0,0.4));glaze.position.set(x,y+1.04,z);g.add(glaze);
   });
-  // Wasabi & Ginger
-  const wasabi=mk(new THREE.SphereGeometry(0.35,10,10),M(0x5AB52A,0.8));wasabi.scale.set(0.9,0.45,0.7);wasabi.position.set(-1.6,0.2,0);g.add(wasabi);
-  const ginger=mk(new THREE.SphereGeometry(0.45,12,12),M(0xFFB3C1,0.7));ginger.scale.set(1,0.18,0.75);ginger.position.set(1.6,0.1,0);g.add(ginger);
-  // Soy sauce small dish
-  const dish=mk(new THREE.CylinderGeometry(0.5,0.4,0.15,20),M(0x222222,0.5,0.2));dish.position.set(0,-0.02,1.45);g.add(dish);
-  const soy=mk(new THREE.CylinderGeometry(0.46,0.46,0.08,20),M(0x1A0800,0.2,0.1));soy.position.set(0,0.11,1.45);g.add(soy);
+  // Wasabi mound
+  const wab=mk(new THREE.SphereGeometry(0.4,14,14),MP(0x5AB52A,0.62,0,0.32,0.28));wab.scale.set(0.92,0.4,0.78);wab.position.set(-1.68,0.22,0);g.add(wab);
+  const wabT=mk(new THREE.SphereGeometry(0.2,12,12),M(0x48A020,0.78));wabT.scale.set(0.9,0.28,0.78);wabT.position.set(-1.68,0.3,0);g.add(wabT);
+  // Pickled ginger folds
+  for(let i=0;i<6;i++){const gin=mk(new THREE.SphereGeometry(0.28,14,14),MP(0xFFB3C1,0.48,0,0.42,0.18,0,0.88));gin.scale.set(1.12,0.1+i*0.018,0.68);gin.position.set(1.7+Math.random()*0.04,0.08+i*0.045,Math.random()*0.1-0.05);g.add(gin);}
+  // Soy sauce dish
+  const dish=mk(new THREE.CylinderGeometry(0.56,0.45,0.2,28),MP(0x1A1A2A,0.32,0.45,0.82,0.14));dish.position.set(0,-0.02,1.52);g.add(dish);
+  const soy=mk(new THREE.CylinderGeometry(0.51,0.51,0.1,28),MP(0x0A0500,0.08,0.12,0.96,0.04));soy.position.set(0,0.14,1.52);g.add(soy);
+  // Chopsticks
+  for(let s=0;s<2;s++){const cs=mk(new THREE.CylinderGeometry(0.024,0.018,3.6,8),MP(0xD4A060,0.55,0.12,0.42));cs.rotation.z=0.14;cs.position.set(-0.48+s*0.14,-0.01+s*0.01,-1.6+s*0.09);g.add(cs);}
 }
 
-// ── BURGER ──
+// ── SMASH BURGER ──
 function buildBurger(g){
-  g.position.y=-0.6;
-  const bbun=mk(new THREE.CylinderGeometry(1.2,1.0,0.38,32),M(0xC8860A,0.8));bbun.position.y=0;g.add(bbun);
-  for(let i=0;i<4;i++){const s=mk(new THREE.SphereGeometry(0.07,6,6),M(0xF0EAC8,0.9));s.position.set(Math.cos(i*1.6)*0.7,0.2,Math.sin(i*1.6)*0.5);g.add(s);}
-  const patty=mk(new THREE.CylinderGeometry(1.1,1.1,0.32,32),M(0x3A1808,0.9));patty.position.y=0.38;g.add(patty);
-  for(let i=0;i<3;i++){const c=mk(new THREE.TorusGeometry(0.25+i*0.22,0.035,4,16),M(0x1A0804,0.95));c.rotation.x=Math.PI/2;c.position.y=0.56;g.add(c);}
-  const cheese=mk(new THREE.CylinderGeometry(1.22,1.22,0.055,4),M(0xFFCC00,0.55));cheese.rotation.y=Math.PI/4;cheese.position.y=0.62;g.add(cheese);
-  const tomato=mk(new THREE.CylinderGeometry(1.06,1.06,0.1,32),M(0xCC2200,0.65));tomato.position.y=0.7;g.add(tomato);
-  for(let i=0;i<8;i++){const l=mk(new THREE.TorusGeometry(0.85+Math.random()*0.2,0.08+Math.random()*0.04,5,10),M(0x1E7A1E,0.9));l.rotation.x=Math.PI/2+Math.random()*0.3;l.rotation.z=i*0.8;l.position.set(Math.random()*0.18-0.09,0.84,Math.random()*0.18-0.09);g.add(l);}
-  const tbun=mk(new THREE.SphereGeometry(1.22,32,16,0,Math.PI*2,0,Math.PI*0.55),M(0xD4941C,0.72));tbun.position.y=0.98;g.add(tbun);
-  for(let i=0;i<7;i++){const s=mk(new THREE.SphereGeometry(0.065,6,6),M(0xF0EAC8,0.9));s.position.set(Math.cos(i*0.9)*0.62,1.5,Math.sin(i*0.9)*0.42);g.add(s);}
+  g.position.y=-0.65;
+  // Bottom brioche bun
+  const bunMat=MP(0xC88A14,0.7,0,0.28,0.38);
+  const bunBot=mk(new THREE.CylinderGeometry(1.22,1.06,0.44,44),bunMat);bunBot.position.y=0;g.add(bunBot);
+  for(let i=0;i<9;i++){const s=mk(new THREE.SphereGeometry(0.058,6,6),MP(0xEEE5C0,0.78,0,0.22));s.position.set(Math.cos(i*0.7)*0.72,0.23,Math.sin(i*0.7)*0.48);g.add(s);}
+  // First smash patty — dark caramelized crust
+  const pat1=mk(new THREE.CylinderGeometry(1.2,1.16,0.24,44),MP(0x2A1206,0.85,0.04,0.38,0.25));pat1.position.y=0.44;g.add(pat1);
+  // Grill marks grid
+  for(let i=0;i<5;i++){const gm=mk(new THREE.BoxGeometry(2.6,0.07,0.07),M(0x0A0400,0.96));gm.position.set(0,0.57,i*0.22-0.44);g.add(gm);}
+  for(let i=0;i<4;i++){const gm=mk(new THREE.BoxGeometry(0.07,0.07,2.6),M(0x0A0400,0.96));gm.position.set(i*0.26-0.39,0.57,0);g.add(gm);}
+  // Caramelized edge crust
+  const crust=mk(new THREE.TorusGeometry(1.18,0.1,9,44),MP(0x4A2008,0.82,0,0.32));crust.rotation.x=Math.PI/2;crust.position.y=0.48;g.add(crust);
+  // Second smash patty
+  const pat2=mk(new THREE.CylinderGeometry(1.16,1.12,0.22,44),MP(0x2E1408,0.86,0.03,0.32));pat2.position.y=0.72;g.add(pat2);
+  // Melted American cheddar — square droopy cheese
+  const cheese=mk(new THREE.CylinderGeometry(1.3,1.3,0.065,4),MP(0xFFCC00,0.42,0,0.72,0.08,0xBB8800));cheese.rotation.y=Math.PI/4;cheese.position.y=0.95;g.add(cheese);
+  // Cheese drips on corners
+  for(let i=0;i<4;i++){const drip=mk(new THREE.SphereGeometry(0.15,9,9),MP(0xFFCC00,0.38,0,0.78,0.08,0,0.88));drip.scale.set(0.55,1.3,0.55);drip.position.set(Math.cos(i*1.57+0.78)*1.2,0.82,Math.sin(i*1.57+0.78)*1.2);g.add(drip);}
+  // Caramelized onions
+  for(let i=0;i<12;i++){const on=mk(new THREE.CylinderGeometry(0.038,0.028,0.42,6),MP(0x9A4E08,0.8,0,0.32));on.rotation.set(Math.PI/2+Math.random()*0.52,Math.random()*Math.PI,Math.random()*0.4);on.position.set(Math.random()*1.05-0.52,1.04,Math.random()*0.95-0.47);g.add(on);}
+  // Tomato slice
+  const tomato=mk(new THREE.CylinderGeometry(1.12,1.12,0.1,44),MP(0xCC2200,0.58,0,0.52,0.1,0xAA1800));tomato.position.y=1.1;g.add(tomato);
+  for(let i=0;i<7;i++){const seed=mk(new THREE.SphereGeometry(0.055,6,6),MP(0xFF9888,0.45,0,0.32));seed.scale.set(1.5,0.38,0.8);seed.position.set(Math.cos(i*0.9)*0.56,1.16,Math.sin(i*0.9)*0.56);g.add(seed);}
+  // Frilly lettuce
+  for(let i=0;i<12;i++){const l=mk(new THREE.TorusGeometry(0.86+Math.random()*0.26,0.068+Math.random()*0.048,5,14),MP(0x22AA22,0.8,0,0.2));l.rotation.x=Math.PI/2+Math.random()*0.38;l.rotation.z=i*0.52;l.position.set(Math.random()*0.18-0.09,1.23,Math.random()*0.18-0.09);g.add(l);}
+  // Special house sauce drizzle
+  for(let i=0;i<4;i++){const sauce=mk(new THREE.TorusGeometry(0.28+i*0.16,0.042,7,22,Math.PI*1.4),MP(0xFF8C1A,0.32,0,0.62,0.08));sauce.rotation.x=Math.PI/2;sauce.rotation.z=i*0.82;sauce.position.set(Math.random()*0.22-0.11,1.3,Math.random()*0.22-0.11);g.add(sauce);}
+  // Top brioche dome
+  const topBun=mk(new THREE.SphereGeometry(1.27,44,22,0,Math.PI*2,0,Math.PI*0.55),MP(0xD4961C,0.66,0,0.36,0.34));topBun.position.y=1.4;g.add(topBun);
+  for(let i=0;i<16;i++){const s=mk(new THREE.SphereGeometry(0.058,6,6),MP(0xF0E5C0,0.78,0,0.26));s.position.set(Math.cos(i*0.39)*0.58,1.9,Math.sin(i*0.39)*0.4);g.add(s);}
+  const bunTopRim=mk(new THREE.TorusGeometry(1.26,0.065,8,44),MP(0xAA6010,0.78,0,0.22));bunTopRim.rotation.x=Math.PI/2;bunTopRim.position.y=1.44;g.add(bunTopRim);
 }
 
-// ── RAMEN ──
+// ── TONKOTSU RAMEN ──
 function buildRamen(g){
-  g.position.y=-0.6;
-  const bowl=mk(new THREE.CylinderGeometry(1.6,1.1,1.15,32,1,true),M(0x1E1E2E,0.7,0.15));g.add(bowl);
-  mk(new THREE.CylinderGeometry(1.1,1.0,0.12,32),M(0x1E1E2E,0.7,0.15)).position.y=-0.63;g.add(g.children[g.children.length-1]);
-  const broth=mk(new THREE.CylinderGeometry(1.54,1.54,0.18,32),M(0xB06830,0.3,0.1));broth.position.y=0.53;g.add(broth);
-  for(let i=0;i<5;i++){const n=mk(new THREE.TorusGeometry(0.75+i*0.09,0.05,7,28),M(0xF0E0B0,0.7));n.rotation.x=Math.PI/2;n.position.y=0.53+i*0.05;g.add(n);}
-  const pork=mk(new THREE.CylinderGeometry(0.44,0.44,0.13,20),M(0x8B3A10,0.8));pork.position.set(-0.6,0.73,0.35);g.add(pork);
-  const fat=mk(new THREE.CylinderGeometry(0.45,0.45,0.035,20),M(0xF5F0D8,0.65));fat.position.set(-0.6,0.8,0.35);g.add(fat);
-  const ew=mk(new THREE.SphereGeometry(0.33,16,16,0,Math.PI*2,0,Math.PI*0.5),M(0xF5F5E0,0.5));ew.rotation.x=Math.PI;ew.position.set(0.6,0.7,0.42);g.add(ew);
-  const ey=mk(new THREE.SphereGeometry(0.19,12,12),M(0xFF9900,0.4));ey.position.set(0.6,0.71,0.42);g.add(ey);
-  const nori=mk(new THREE.BoxGeometry(0.04,0.65,0.48),M(0x151F15,0.9));nori.position.set(-0.02,0.78,-0.6);g.add(nori);
-  for(let i=0;i<9;i++){const on=mk(new THREE.CylinderGeometry(0.028,0.028,0.28+Math.random()*0.15,6),M(0x4CAF50,0.8));on.rotation.set(Math.random()*0.5-0.25,0,Math.random()*0.5-0.25);on.position.set(Math.random()*1.1-0.55,0.88+Math.random()*0.15,Math.random()*1.1-0.55);g.add(on);}
+  g.position.y=-0.7;
+  // Dark glazed ceramic bowl
+  const bowlMat=MP(0x1A1A2E,0.52,0.18,0.72,0.18);
+  const bowl=mk(new THREE.CylinderGeometry(1.68,1.16,1.22,48,1,true),bowlMat);g.add(bowl);
+  const bowlBase=mk(new THREE.CylinderGeometry(1.16,1.06,0.14,44),bowlMat);bowlBase.position.y=-0.7;g.add(bowlBase);
+  const bRim=mk(new THREE.TorusGeometry(1.68,0.1,12,48),bowlMat);bRim.rotation.x=Math.PI/2;bRim.position.y=0.64;g.add(bRim);
+  // Tonkotsu broth — rich milky amber with high sheen
+  const brothMat=MP(0xC07030,0.16,0,0.96,0.05,0x8A3A00);
+  const broth=mk(new THREE.CylinderGeometry(1.6,1.6,0.22,48),brothMat);broth.position.y=0.58;g.add(broth);
+  // Floating oil rings
+  for(let i=0;i<4;i++){const oil=mk(new THREE.TorusGeometry(0.18+i*0.2,0.058-i*0.008,7,28),MP(0xFFAA00,0.04,0,1.0,0.01,0,0.38));oil.rotation.x=Math.PI/2;oil.position.set(Math.random()*0.28-0.14,0.7,Math.random()*0.28-0.14);g.add(oil);}
+  // Noodle nest (layered torus rings)
+  for(let i=0;i<7;i++){const n=mk(new THREE.TorusGeometry(0.68+i*0.1,0.05,9,36),MP(0xEEDDA0,0.7,0,0.32,0.32));n.rotation.x=Math.PI/2+Math.random()*0.28;n.rotation.z=Math.random()*0.55;n.position.set(Math.random()*0.1-0.05,0.58+i*0.04,Math.random()*0.1-0.05);g.add(n);}
+  // Chashu pork — layered, soy-glazed
+  const pork=mk(new THREE.CylinderGeometry(0.47,0.47,0.16,28),MP(0x7A2E10,0.7,0,0.48,0.14));pork.position.set(-0.62,0.78,0.36);g.add(pork);
+  const fat=mk(new THREE.CylinderGeometry(0.48,0.48,0.045,28),MP(0xF5EFDA,0.52,0,0.65,0.09));fat.position.set(-0.62,0.86,0.36);g.add(fat);
+  const porkGlaze=mk(new THREE.CylinderGeometry(0.49,0.49,0.17,28),MP(0x9A3A14,0.18,0,0.92,0.04,0x662200,0.62));porkGlaze.position.set(-0.62,0.78,0.36);g.add(porkGlaze);
+  for(let i=0;i<3;i++){const cm=mk(new THREE.BoxGeometry(1.06,0.045,0.06),M(0x1A0800,0.96));cm.position.set(-0.62,0.88,0.3+i*0.04);g.add(cm);}
+  // Soft-boiled egg (halved, jammy yolk visible)
+  const eggShell=mk(new THREE.SphereGeometry(0.37,20,20,0,Math.PI*2,0,Math.PI*0.52),MP(0xF0EED8,0.42,0,0.52,0.18));eggShell.rotation.x=Math.PI;eggShell.position.set(0.64,0.76,0.5);g.add(eggShell);
+  const yolk=mk(new THREE.SphereGeometry(0.22,16,16),MP(0xFF9200,0.22,0,0.82,0.07,0xDD7700));yolk.position.set(0.64,0.76,0.5);g.add(yolk);
+  const egFace=mk(new THREE.CircleGeometry(0.35,24),MP(0xF8F5E8,0.38,0,0.62));egFace.rotation.x=-Math.PI/2;egFace.position.set(0.64,0.76,0.5);g.add(egFace);
+  // Nori sheet with texture
+  const nori=mk(new THREE.BoxGeometry(0.04,0.75,0.54),MP(0x111E11,0.83,0.06,0.52,0.28));nori.position.set(-0.05,0.84,-0.67);g.add(nori);
+  for(let i=0;i<5;i++){const nl=mk(new THREE.BoxGeometry(0.05,0.04,0.52),M(0x1A2E1A,0.9));nl.position.set(-0.05,0.66+i*0.14,-0.67);g.add(nl);}
+  // Menma (bamboo shoots)
+  for(let i=0;i<3;i++){const bam=mk(new THREE.CylinderGeometry(0.054,0.042,0.36,9),MP(0xD4BC80,0.72,0,0.28));bam.rotation.set(0.42+Math.random()*0.38,Math.random()*Math.PI,0.1);bam.position.set(0.32+Math.random()*0.38-0.19,0.77+i*0.06,0.12+Math.random()*0.38-0.19);g.add(bam);}
+  // Spring onion (two colors for realism)
+  for(let i=0;i<14;i++){const on=mk(new THREE.CylinderGeometry(0.024,0.024,0.3+Math.random()*0.2,6),M(i%3?0x4CAF50:0x8DC870,0.78));on.rotation.set(Math.random()*0.62-0.31,0,Math.random()*0.62-0.31);on.position.set(Math.random()*1.22-0.61,0.92+Math.random()*0.2,Math.random()*1.22-0.61);g.add(on);}
+  // Sesame seeds scattered
+  for(let i=0;i<12;i++){const s=mk(new THREE.SphereGeometry(0.024,5,5),M(0xF0E4C0,0.9));s.position.set(Math.random()*1.3-0.65,0.71,Math.random()*1.3-0.65);g.add(s);}
+  // Fish cake (naruto)
+  const fishcake=mk(new THREE.CylinderGeometry(0.24,0.24,0.1,24),M(0xF8F0F0,0.65));fishcake.position.set(0.55,0.76,-0.55);g.add(fishcake);
+  const spiral=mk(new THREE.TorusGeometry(0.12,0.04,7,24,Math.PI*2),M(0xFF6699,0.7));spiral.rotation.x=Math.PI/2;spiral.position.set(0.55,0.82,-0.55);g.add(spiral);
 }
 
 // ── PANEER TIKKA ──
 function buildTikka(g){
   g.position.y=-0.4;
-  // Skewers
-  [[-0.8,0],[-0.2,0.1],[0.4,0],[1.0,-0.1]].forEach(([xOff,zOff])=>{
-    const skewer=mk(new THREE.CylinderGeometry(0.04,0.04,4.5,8),M(0xC8A060,0.7));
-    skewer.rotation.z=Math.PI/8;skewer.position.set(xOff,-0.2,zOff);g.add(skewer);
-    const pieces=[
-      {col:0xFFF0C0,s:[1,0.9,1],y:0.4},
-      {col:0xCC3300,s:[0.9,0.8,0.85],y:0.95},
-      {col:0x22AA44,s:[0.8,0.85,0.9],y:1.45},
-      {col:0xFFF0C0,s:[1,0.9,1],y:1.95},
-    ];
+  // Black cast-iron / dark plate
+  const plate=mk(new THREE.CylinderGeometry(2.45,2.45,0.07,48),MP(0x1A1208,0.82,0.1,0.25));plate.position.y=-0.65;g.add(plate);
+  [[-0.88,0],[-0.22,0.1],[0.44,0],[1.08,-0.1]].forEach(([xOff,zOff])=>{
+    // Polished metal skewer
+    const skewer=mk(new THREE.CylinderGeometry(0.038,0.038,4.9,10),MP(0xC8C8C0,0.18,0.9,0.8,0.08));
+    skewer.rotation.z=Math.PI/8;skewer.position.set(xOff,-0.15,zOff);g.add(skewer);
+    const pieces=[{col:0xFFF2CC,s:[1.0,0.92,1.0],y:0.44},{col:0xCC3808,s:[0.9,0.82,0.88],y:1.0},{col:0x228844,s:[0.82,0.78,0.92],y:1.52},{col:0xFFF2CC,s:[1.0,0.92,1.0],y:2.02}];
     pieces.forEach(({col,s,y})=>{
-      const p=mk(new THREE.BoxGeometry(0.62,0.55,0.6),M(col,0.8));
-      p.scale.set(s[0],s[1],s[2]);p.rotation.y=Math.random()*0.6-0.3;
-      p.position.set(xOff+Math.sin(Math.PI/8)*y,y-0.3,zOff+Math.cos(Math.PI/8)*0.05);g.add(p);
-      // Char marks
-      const c=mk(new THREE.BoxGeometry(0.55,0.08,0.55),M(0x3A1A04,0.95));c.position.set(xOff+Math.sin(Math.PI/8)*y,y-0.02,zOff);g.add(c);
+      const isPaneer=col===0xFFF2CC;
+      const p=mk(new THREE.BoxGeometry(0.65,0.6,0.63),MP(col,isPaneer?0.58:0.72,0,isPaneer?0.28:0.22,isPaneer?0.14:0.3));
+      p.scale.set(s[0],s[1],s[2]);p.rotation.y=Math.random()*0.65-0.32;p.position.set(xOff+Math.sin(Math.PI/8)*y,y-0.24,zOff+Math.cos(Math.PI/8)*0.05);g.add(p);
+      if(isPaneer){
+        // Tandoor orange-red marinade coating
+        const coat=mk(new THREE.BoxGeometry(0.63,0.58,0.61),MP(0xFF5500,0.52,0,0.45,0.14,0xCC3300,0.62));
+        coat.scale.set(s[0],s[1],s[2]);coat.rotation.y=p.rotation.y;coat.position.copy(p.position);coat.position.y+=0.02;g.add(coat);
+        // Char marks (3 per face)
+        for(let i=0;i<4;i++){const cm=mk(new THREE.BoxGeometry(0.66,0.09,0.04),M(0x1A0800,0.96));cm.position.copy(p.position);cm.position.z+=0.3+i*0.02;cm.rotation.y=p.rotation.y;g.add(cm);}
+        // Carom seeds on paneer surface
+        for(let i=0;i<3;i++){const seed=mk(new THREE.SphereGeometry(0.022,5,5),M(0x2A1A08,0.9));seed.position.copy(p.position);seed.position.y+=0.3;seed.position.x+=Math.random()*0.2-0.1;g.add(seed);}
+      }
     });
   });
-  // Onion and pepper rings
-  for(let i=0;i<8;i++){
-    const veg=mk(new THREE.TorusGeometry(0.25,0.06,6,12),Math.random()>0.5?M(0xFF4444,0.8):M(0xFFAA00,0.8));
-    veg.position.set(Math.random()*2.2-0.4,-0.55+Math.random()*0.15,Math.random()*0.6-0.3);veg.rotation.x=Math.PI/2+Math.random()*0.5;g.add(veg);
-  }
+  // Pepper & onion rings (scattered)
+  for(let i=0;i<12;i++){const vc=Math.random()>0.5?0xFF3333:0xFF9900;const veg=mk(new THREE.TorusGeometry(0.26,0.068,8,16),MP(vc,0.62,0,0.32));veg.position.set(Math.random()*2.2-0.4,-0.52+Math.random()*0.18,Math.random()*0.68-0.34);veg.rotation.x=Math.PI/2+Math.random()*0.62;g.add(veg);}
   // Lemon wedge
-  const lem=mk(new THREE.SphereGeometry(0.4,12,12),M(0xFFE040,0.6));lem.scale.set(0.6,0.4,1);lem.position.set(-1.7,-0.55,0);g.add(lem);
-  const lemSeg=mk(new THREE.CylinderGeometry(0.35,0.35,0.04,8,1,false,0,Math.PI),M(0xFFDD00,0.5));lemSeg.rotation.x=-Math.PI/2;lemSeg.position.set(-1.7,-0.37,-0.01);g.add(lemSeg);
+  const lem=mk(new THREE.SphereGeometry(0.43,16,16),MP(0xFFE020,0.52,0,0.42));lem.scale.set(0.62,0.37,1.06);lem.position.set(-1.78,-0.52,0);g.add(lem);
+  const lemSeg=mk(new THREE.CylinderGeometry(0.38,0.38,0.046,9,1,false,0,Math.PI),MP(0xFFDD00,0.38,0,0.52));lemSeg.rotation.x=-Math.PI/2;lemSeg.position.set(-1.78,-0.34,-0.01);g.add(lemSeg);
+  // Mint, coriander & chaat masala
+  for(let i=0;i<10;i++){const l=mk(new THREE.SphereGeometry(0.065,6,6),M(i%2?0x1E9A1E:0x22BB22,0.78));l.scale.set(1.8,0.18,1.25);l.position.set(Math.random()*3.6-1.6,-0.6,Math.random()*1.0-0.5);g.add(l);}
+  for(let i=0;i<14;i++){const m=mk(new THREE.SphereGeometry(0.022,5,5),M(0xCC4400,0.9));m.position.set(Math.random()*3.6-1.6,-0.57,Math.random()*1.0-0.5);g.add(m);}
 }
 
-// ── PASTA ──
+// ── TRUFFLE PASTA ──
 function buildPasta(g){
-  g.position.y=-0.5;
-  const plate=mk(new THREE.CylinderGeometry(2.0,2.0,0.1,40),M(0xF8F4EE,0.35,0.1));g.add(plate);
-  mk(new THREE.TorusGeometry(2.0,0.1,8,40),M(0xEEE9E0,0.35)).rotation.x=Math.PI/2;g.children[g.children.length-1].position.y=0.05;
-  const pk=mk(new THREE.TorusKnotGeometry(0.72,0.075,100,10,2,3),M(0xE8C07A,0.7));pk.position.y=0.42;pk.scale.set(1,0.55,1);g.add(pk);
-  for(let i=0;i<6;i++){const t=mk(new THREE.TorusGeometry(0.38+i*0.07,0.048,6,22),M(0xD4A840,0.7));t.rotation.x=Math.PI/2+Math.random()*0.5;t.rotation.z=Math.random()*Math.PI;t.position.set(Math.random()*0.35-0.18,0.3+i*0.07,Math.random()*0.35-0.18);g.add(t);}
-  [[-0.6,0.7,-0.35],[0.55,0.65,0.42],[-0.1,0.68,0.62]].forEach(([x,y,z])=>{
-    const mb=mk(new THREE.SphereGeometry(0.28,14,14),M(0x5C2A0A,0.88));mb.position.set(x,y,z);g.add(mb);
-    const gl=mk(new THREE.SphereGeometry(0.27,14,14),M(0x8B1A00,0.45,0.05,0xAA0000));gl.position.set(x,y+0.06,z);g.add(gl);
-  });
-  for(let i=0;i<9;i++){const c=mk(new THREE.BoxGeometry(0.22,0.035,0.09),M(0xFFF8E0,0.45));c.rotation.set(Math.random(),Math.random()*Math.PI,Math.random());c.position.set(Math.random()*1.1-0.55,0.72+Math.random()*0.18,Math.random()*1.1-0.55);g.add(c);}
-  const basil=mk(new THREE.SphereGeometry(0.14,8,8),M(0x1E8B1E,0.88));basil.scale.set(1.5,0.22,1);basil.position.set(0,0.9,0.3);g.add(basil);
+  g.position.y=-0.55;
+  // White pasta bowl with rim
+  const bowlMat=MP(0xF8F5F0,0.09,0,1.0,0.04);
+  const plate=mk(new THREE.CylinderGeometry(2.08,2.08,0.14,52),bowlMat);g.add(plate);
+  const pRim=mk(new THREE.TorusGeometry(2.08,0.16,12,52),bowlMat);pRim.rotation.x=Math.PI/2;pRim.position.y=0.07;g.add(pRim);
+  const inner=mk(new THREE.CylinderGeometry(1.68,1.68,0.09,48),MP(0xF5F0EA,0.11,0,0.92,0.05));inner.position.y=0.11;g.add(inner);
+  // Truffle cream sauce
+  const sauce=mk(new THREE.CylinderGeometry(1.62,1.62,0.07,48),MP(0xE8D8C0,0.2,0,0.88,0.07,0xAA8844));sauce.position.y=0.19;g.add(sauce);
+  // Tagliatelle tangle (torus knot + nested rings)
+  const pk=mk(new THREE.TorusKnotGeometry(0.76,0.08,130,14,2,3),MP(0xE8C478,0.6,0,0.36,0.28));pk.position.y=0.5;pk.scale.set(1,0.5,1);g.add(pk);
+  for(let i=0;i<9;i++){const t=mk(new THREE.TorusGeometry(0.35+i*0.068,0.052,8,30),MP(0xD9B840,0.62,0,0.32,0.28));t.rotation.x=Math.PI/2+Math.random()*0.58;t.rotation.z=Math.random()*Math.PI;t.position.set(Math.random()*0.4-0.2,0.3+i*0.068,Math.random()*0.4-0.2);g.add(t);}
+  // Wild mushrooms (porcini/shiitake)
+  [[-0.64,0.77,-0.4],[0.56,0.74,0.46],[-0.12,0.74,0.66],[0.66,0.74,-0.54]].forEach(([x,y,z])=>{
+    const cap=mk(new THREE.SphereGeometry(0.23,16,16),MP(0x5C3418,0.7,0.02,0.42));cap.scale.set(1.4,0.54,1.32);cap.position.set(x,y,z);g.add(cap);
+    const gill=mk(new THREE.CylinderGeometry(0.19,0.11,0.13,14),M(0xAA8050,0.82));gill.position.set(x,y-0.08,z);g.add(gill);
+    const shine=mk(new THREE.SphereGeometry(0.13,11,11),MP(0x8A5428,0.12,0,0.92,0.04,0,0.55));shine.scale.set(1.2,0.38,1.1);shine.position.set(x,y+0.08,z);g.add(shine);}
+  );
+  // Cream sauce drizzle rings
+  for(let i=0;i<5;i++){const dr=mk(new THREE.TorusGeometry(0.32+i*0.092,0.036,7,26,Math.PI*1.4),MP(0xFFF8F0,0.16,0,0.88,0.04));dr.rotation.x=Math.PI/2;dr.rotation.z=i*0.68;dr.position.y=0.56+i*0.065;g.add(dr);}
+  // Black truffle shavings (thin dark ellipses)
+  for(let i=0;i<10;i++){const tr=mk(new THREE.SphereGeometry(0.062,9,9),MP(0x1A1412,0.58,0.12,0.52,0.18));tr.scale.set(2.4,0.22,1.6);tr.rotation.set(Math.random(),Math.random()*Math.PI,Math.random());tr.position.set(Math.random()*1.25-0.62,0.9+Math.random()*0.1,Math.random()*1.25-0.62);g.add(tr);}
+  // Parmesan crisps
+  for(let i=0;i<5;i++){const parm=mk(new THREE.BoxGeometry(0.32,0.042,0.24),MP(0xF5E080,0.52,0,0.52,0.14));parm.rotation.set(Math.random()*0.32,Math.random()*Math.PI,Math.random()*0.32);parm.position.set(Math.random()*1.12-0.56,0.94+Math.random()*0.2,Math.random()*1.12-0.56);g.add(parm);}
+  // Fresh basil leaves
+  const basil=mk(new THREE.SphereGeometry(0.16,10,10),MP(0x1E8B1E,0.76,0,0.22));basil.scale.set(1.65,0.21,1.35);basil.position.set(0,1.0,0.32);g.add(basil);
+  const basil2=mk(new THREE.SphereGeometry(0.11,9,9),MP(0x22A022,0.74,0,0.2));basil2.scale.set(1.55,0.19,1.22);basil2.position.set(-0.26,1.02,0.1);g.add(basil2);
+  // Cracked black pepper
+  for(let i=0;i<10;i++){const p=mk(new THREE.SphereGeometry(0.024,5,5),M(0x222222,0.9));p.position.set(Math.random()*1.25-0.62,0.92+Math.random()*0.1,Math.random()*1.25-0.62);g.add(p);}
+  // Parmesan dust
+  for(let i=0;i<14;i++){const d=mk(new THREE.SphereGeometry(0.018,4,4),M(0xF5E888,0.85));d.position.set(Math.random()*1.4-0.7,0.88,Math.random()*1.4-0.7);g.add(d);}
 }
 
-// ── ICE CREAM (Gulab Jamun Sundae) ──
+// ── GULAB JAMUN SUNDAE ──
 function buildIcecream(g){
-  g.position.y=-1.0;
-  const cup=mk(new THREE.CylinderGeometry(1.0,0.7,1.4,32),M(0xF0E8D8,0.6,0.1));g.add(cup);
-  // Gulab jamun at bottom
-  [[0.4,0.8,-0.2],[-0.3,0.7,0.35],[0,0.95,0.1]].forEach(([x,y,z])=>{
-    const gj=mk(new THREE.SphereGeometry(0.28,14,14),M(0x8B3A10,0.75,0.05));gj.position.set(x,y,z);g.add(gj);
-    const syr=mk(new THREE.SphereGeometry(0.27,10,10),M(0xAA2200,0.3,0.1));syr.position.set(x,y+0.04,z);g.add(syr);
+  g.position.y=-1.05;
+  // Glass sundae cup
+  const cupMat=MP(0xF0ECE4,0.22,0.06,0.62,0.14);
+  const cup=mk(new THREE.CylinderGeometry(1.06,0.73,1.52,40),cupMat);g.add(cup);
+  const cupRim=mk(new THREE.TorusGeometry(1.06,0.072,9,40),cupMat);cupRim.rotation.x=Math.PI/2;cupRim.position.y=0.76;g.add(cupRim);
+  const cupBase=mk(new THREE.CylinderGeometry(0.78,0.9,0.08,40),cupMat);cupBase.position.y=-0.8;g.add(cupBase);
+  // Rose syrup pool at bottom — very glossy
+  const syrup=mk(new THREE.CylinderGeometry(0.99,0.99,0.14,40),MP(0xCC0044,0.16,0,0.96,0.04,0xAA0033));syrup.position.y=-0.69;g.add(syrup);
+  // Gulab jamun spheres — deep amber, soaked
+  [[0.43,0.84,-0.22],[-0.33,0.73,0.37],[0.06,0.97,0.13]].forEach(([x,y,z])=>{
+    const gj=mk(new THREE.SphereGeometry(0.3,18,18),MP(0x8B3810,0.6,0.02,0.62,0.1,0x5A2008));gj.position.set(x,y,z);g.add(gj);
+    // Sugar syrup coating (high clearcoat)
+    const syr=mk(new THREE.SphereGeometry(0.29,16,16),MP(0xAA2200,0.16,0,0.88,0.04,0,0.52));syr.position.set(x,y+0.04,z);g.add(syr);
+    // Saffron glaze spot on top
+    const sf=mk(new THREE.SphereGeometry(0.08,8,8),MP(0xFFCC00,0.22,0,0.72,0.06));sf.position.set(x,y+0.22,z+0.08);g.add(sf);
   });
-  // Gelato scoops
-  const sc1=mk(new THREE.SphereGeometry(0.88,20,20),M(0xFDF5E6,0.35));sc1.position.y=1.55;g.add(sc1);
-  const sc2=mk(new THREE.SphereGeometry(0.8,20,20),M(0xFFB3C1,0.35));sc2.position.set(0.12,2.35,0.1);g.add(sc2);
-  // Rose syrup drizzle
-  for(let i=0;i<5;i++){const dr=mk(new THREE.TorusGeometry(0.5+i*0.08,0.03,5,18,Math.PI*1.2),M(0xDD0044,0.4,0.05));dr.rotation.x=Math.PI/2;dr.rotation.z=i*0.5;dr.position.y=1.55+i*0.12;g.add(dr);}
-  // Pistachio crumbles
-  const pcols=[0x6A8E23,0x4E6B1A,0x8AAA2A];
-  for(let i=0;i<12;i++){const p=mk(new THREE.BoxGeometry(0.1,0.07,0.1),M(pcols[i%3],0.8));p.rotation.set(Math.random(),Math.random(),Math.random());p.position.set(Math.random()*1.0-0.5,1.45+Math.random()*1.1,Math.random()*0.9-0.45);g.add(p);}
-  // Gold leaf (shiny flat pieces)
-  for(let i=0;i<4;i++){const gl=mk(new THREE.BoxGeometry(0.18,0.01,0.12),M(0xFFD700,0.2,0.6));gl.rotation.set(Math.random()*0.5,Math.random()*Math.PI,Math.random()*0.5);gl.position.set(Math.random()*0.6-0.3,2.3+Math.random()*0.2,Math.random()*0.5-0.25);g.add(gl);}
+  // Vanilla gelato base scoop
+  const sc1=mk(new THREE.SphereGeometry(0.93,24,24),MP(0xFDF8EC,0.36,0,0.72,0.1));sc1.position.y=1.62;g.add(sc1);
+  // Vanilla bean flecks
+  for(let i=0;i<10;i++){const v=mk(new THREE.SphereGeometry(0.018,4,4),M(0x4A2A08,0.9));v.position.set(Math.random()*0.65-0.32,1.62+Math.random()*0.72,Math.random()*0.65-0.32);g.add(v);}
+  // Rose gelato top scoop
+  const sc2=mk(new THREE.SphereGeometry(0.83,24,24),MP(0xFFB8D0,0.28,0,0.72,0.09,0xDD4488));sc2.position.set(0.1,2.44,0.1);g.add(sc2);
+  for(let i=0;i<7;i++){const rp=mk(new THREE.SphereGeometry(0.18,9,9),MP(0xFFAACC,0.32,0,0.68,0.11));rp.scale.set(1.22,0.34,0.92);rp.position.set(0.1+Math.cos(i*0.9)*0.42,2.54,0.1+Math.sin(i*0.9)*0.42);g.add(rp);}
+  // Rose syrup drizzle ribbons
+  for(let i=0;i<7;i++){const dr=mk(new THREE.TorusGeometry(0.46+i*0.07,0.034,7,24,Math.PI*1.4),MP(0xDD0055,0.18,0,0.96,0.03,0xBB0033));dr.rotation.x=Math.PI/2;dr.rotation.z=i*0.48;dr.position.y=1.62+i*0.1;g.add(dr);}
+  // Pistachio crumbles (green chips)
+  const pcols=[0x6A8E23,0x4E6B1A,0x8AAA2A,0x90B030];
+  for(let i=0;i<18;i++){const p=mk(new THREE.BoxGeometry(0.1,0.068,0.1),MP(pcols[i%4],0.7,0,0.2));p.rotation.set(Math.random(),Math.random(),Math.random());p.position.set(Math.random()*1.12-0.56,1.52+Math.random()*1.14,Math.random()*1.04-0.52);g.add(p);}
+  // Edible gold leaf flakes
+  for(let i=0;i<6;i++){const gl=mk(new THREE.BoxGeometry(0.22,0.007,0.16),MP(0xFFD700,0.06,0.94,1.0,0.01));gl.rotation.set(Math.random()*0.62,Math.random()*Math.PI,Math.random()*0.62);gl.position.set(Math.random()*0.72-0.36,2.44+Math.random()*0.28,Math.random()*0.62-0.31);g.add(gl);}
+  // Wafer biscuit stick
+  const wafer=mk(new THREE.CylinderGeometry(0.052,0.048,1.45,8),MP(0xD4A060,0.68,0,0.28));wafer.position.set(0.52,2.12,0.42);wafer.rotation.set(-0.42,-0.38,0.32);g.add(wafer);
+  // Dried rose petal
+  const petal=mk(new THREE.SphereGeometry(0.12,9,9),MP(0xDD4466,0.62,0,0.3));petal.scale.set(1.4,0.15,1.1);petal.position.set(-0.4,2.6,0.2);g.add(petal);
 }
 
-// ── WINGS ──
+// ── CRISPY BBQ WINGS ──
 function buildWings(g){
-  g.position.y=-0.4;
-  const wpos=[{x:-1.8,z:0,ry:0.4},{x:-0.8,z:0.9,ry:-0.2},{x:0.2,z:0.4,ry:0.6},{x:1.2,z:-0.5,ry:-0.35},{x:-1.3,z:-1.0,ry:0.15},{x:0.7,z:-1.1,ry:-0.55}];
+  g.position.y=-0.45;
+  const wpos=[{x:-1.88,z:0.06,ry:0.4},{x:-0.84,z:0.96,ry:-0.25},{x:0.18,z:0.42,ry:0.62},{x:1.24,z:-0.54,ry:-0.38},{x:-1.34,z:-1.06,ry:0.18},{x:0.74,z:-1.14,ry:-0.58}];
   wpos.forEach(({x,z,ry})=>{
     const wg=new THREE.Group();wg.position.set(x,0,z);wg.rotation.y=ry;
-    const wb=mk(new THREE.CylinderGeometry(0.24,0.16,1.2,12),M(0xB8540A,0.8));wb.rotation.z=0.3;wg.add(wb);
-    const bone=mk(new THREE.CylinderGeometry(0.055,0.07,0.28,8),M(0xF5EDD0,0.65));bone.position.y=0.74;bone.rotation.z=0.3;wg.add(bone);
-    const glaze=mk(new THREE.CylinderGeometry(0.26,0.18,1.22,12),M(0xCC3300,0.4,0.1,0xFF2200));glaze.rotation.z=0.3;glaze.position.y=0.02;wg.add(glaze);
+    // Wing body — fried chicken texture
+    const wb=mk(new THREE.CylinderGeometry(0.26,0.18,1.28,16),MP(0xAA4E08,0.7,0,0.38,0.18));wb.rotation.z=0.3;wg.add(wb);
+    // Smoky honey-chipotle BBQ glaze (high clearcoat)
+    const glaze=mk(new THREE.CylinderGeometry(0.28,0.2,1.3,16),MP(0xCC3300,0.16,0,0.96,0.03,0xFF2200,0.62));glaze.rotation.z=0.3;glaze.position.y=0.01;wg.add(glaze);
+    // Caramelized honey zone
+    const honey=mk(new THREE.CylinderGeometry(0.27,0.19,0.54,16),MP(0xAA2200,0.12,0,0.98,0.02,0xCC1100,0.55));honey.rotation.z=0.3;honey.position.y=0.38;wg.add(honey);
+    // Crispy skin bubbles
+    for(let i=0;i<5;i++){const sk=mk(new THREE.SphereGeometry(0.07+Math.random()*0.055,8,8),MP(0xBB5500,0.72,0,0.42,0.18));sk.scale.set(1.22,0.34,1.0);sk.position.set(Math.random()*0.2-0.1,Math.random()*0.92-0.3,Math.random()*0.2-0.1);sk.rotation.z=0.3;wg.add(sk);}
+    // Bone tip
+    const bone=mk(new THREE.CylinderGeometry(0.062,0.078,0.34,9),MP(0xF5EDD0,0.52,0.06,0.32,0.18));bone.position.y=0.78;bone.rotation.z=0.3;wg.add(bone);
+    // White sesame seeds
+    for(let i=0;i<4;i++){const s=mk(new THREE.SphereGeometry(0.024,5,5),M(0xEEE5C0,0.84));s.position.set(Math.random()*0.19-0.09,(Math.random()-0.5)*0.82,0.22);wg.add(s);}
     g.add(wg);
   });
-  // Dip bowl
-  const bowl=mk(new THREE.CylinderGeometry(0.7,0.55,0.35,20),M(0xF0E0C0,0.6));bowl.position.set(2.2,0.05,0.5);g.add(bowl);
-  const dip=mk(new THREE.CylinderGeometry(0.64,0.64,0.12,20),M(0xFFF8F0,0.4));dip.position.set(2.2,0.28,0.5);g.add(dip);
-  // Green garnish
-  for(let i=0;i<6;i++){const c=mk(new THREE.SphereGeometry(0.05,6,6),M(0x228B22,0.85));c.position.set(2.0+Math.random()*0.4,0.38,0.3+Math.random()*0.4);g.add(c);}
+  // Ranch dip bowl
+  const bowlMat=MP(0xF0E0C0,0.32,0,0.82,0.11);
+  const bowl=mk(new THREE.CylinderGeometry(0.73,0.57,0.4,28),bowlMat);bowl.position.set(2.26,0.08,0.52);g.add(bowl);
+  const bRim=mk(new THREE.TorusGeometry(0.73,0.055,9,28),bowlMat);bRim.rotation.x=Math.PI/2;bRim.position.set(2.26,0.28,0.52);g.add(bRim);
+  // Thick ranch dip
+  const dip=mk(new THREE.CylinderGeometry(0.67,0.67,0.16,28),MP(0xFFFAF5,0.16,0,0.88,0.05));dip.position.set(2.26,0.34,0.52);g.add(dip);
+  // Ranch herb specks
+  for(let i=0;i<10;i++){const h=mk(new THREE.SphereGeometry(0.019,5,5),M(0x228822,0.84));h.position.set(2.1+Math.random()*0.32,0.42,0.36+Math.random()*0.32);g.add(h);}
+  for(let i=0;i<8;i++){const h=mk(new THREE.SphereGeometry(0.014,4,4),M(0x222222,0.9));h.position.set(2.1+Math.random()*0.32,0.43,0.36+Math.random()*0.32);g.add(h);}
+  // Celery sticks
+  for(let i=0;i<3;i++){const cel=mk(new THREE.CylinderGeometry(0.058,0.048,0.92,9),M(0x4A9A30,0.72));cel.rotation.set(0.22,i*0.38,0.12);cel.position.set(2.0,0.54+i*0.04,1.02+i*0.1);g.add(cel);}
+  // Scattered herb garnish on plate
+  for(let i=0;i<8;i++){const p=mk(new THREE.SphereGeometry(0.038,5,5),M(0x228B22,0.82));p.position.set(Math.random()*3.4-0.7,-0.36,Math.random()*2.1-1.05);g.add(p);}
 }
-
 // ═══════════════════════════════════════
 //  STARS (for space background)
 // ═══════════════════════════════════════
