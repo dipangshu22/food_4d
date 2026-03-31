@@ -2,1065 +2,898 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>SAVEUR — AR Dining</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRAVE AR — Food in Your World</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #080705;
-    --surface: #12100d;
-    --card: #1c1812;
-    --card2: #251f18;
-    --accent: #c8841e;
-    --gold: #e0a84a;
-    --gold-light: #f0cc88;
-    --text: #f0e8de;
-    --muted: #8a7a6a;
-    --dim: #4a3e32;
-    --red: #c04040;
-    --green: #4a9060;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#08080F;--bg2:#0E0E1C;--bg3:#161627;--card:#111120;
+  --border:#1E1E35;--border2:#2A2A45;
+  --acc:#FF5F1F;--acc2:#FFB347;--ar:#00E5FF;--ar2:#00FFA3;
+  --text:#F2EEE8;--muted:#6A6A82;--muted2:#4A4A62;
+  --green:#00C896;--radius:18px;
+  --font-display:'Syne',sans-serif;--font-ui:'Outfit',sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);display:flex;flex-direction:column}
 
-  /* ── SCREENS ── */
-  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
-  .screen.active { display: flex; }
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-  /* ─── SCREEN 1: QR SCAN ─── */
-  #screen-scan { background: var(--bg); }
-  .scan-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #1a1208 0%, #080705 70%); pointer-events: none; }
-  .scan-grain { position: absolute; inset: 0; opacity: .04; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-  .scan-header { position: relative; text-align: center; margin-bottom: 3rem; z-index: 1; }
-  .scan-header .logo { font-family: 'Playfair Display', serif; font-size: 2.4rem; letter-spacing: .15em; color: var(--gold-light); }
-  .scan-header .tagline { font-size: .72rem; letter-spacing: .35em; color: var(--muted); margin-top: .4rem; text-transform: uppercase; }
-  .qr-frame { position: relative; width: 220px; height: 220px; cursor: pointer; z-index: 1; }
-  .qr-corner { position: absolute; width: 28px; height: 28px; }
-  .qr-corner::before, .qr-corner::after { content: ''; position: absolute; background: var(--gold); }
-  .qr-corner::before { width: 100%; height: 3px; }
-  .qr-corner::after { width: 3px; height: 100%; }
-  .qr-corner.tl { top: 0; left: 0; }
-  .qr-corner.tr { top: 0; right: 0; transform: rotate(90deg); }
-  .qr-corner.bl { bottom: 0; left: 0; transform: rotate(-90deg); }
-  .qr-corner.br { bottom: 0; right: 0; transform: rotate(180deg); }
-  .qr-inner { position: absolute; inset: 10px; display: flex; align-items: center; justify-content: center; }
-  .qr-code-img { width: 160px; height: 160px; opacity: .6; }
-  .qr-beam { position: absolute; left: 10px; right: 10px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent); top: 10px; animation: beam 2.4s ease-in-out infinite; box-shadow: 0 0 12px var(--gold); }
-  @keyframes beam { 0%,100% { top: 10px; opacity: 0; } 10%,90% { opacity: 1; } 50% { top: calc(100% - 12px); } }
-  .scan-btn { position: relative; margin-top: 2.5rem; padding: .9rem 2.8rem; background: var(--accent); color: #fff; border: none; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .3s; z-index: 1; }
-  .scan-btn:hover { background: var(--gold); transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
-  .scan-hint { position: relative; font-size: .7rem; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; margin-top: 1rem; z-index: 1; }
-  .scan-anim { animation: scan-pulse .5s ease; }
-  @keyframes scan-pulse { 0% { transform: scale(1); } 50% { transform: scale(.95); } 100% { transform: scale(1); } }
+/* ── HEADER ── */
+.header{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:rgba(8,8,15,0.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);position:relative;z-index:50}
+.logo{font-family:var(--font-display);font-size:1.55rem;font-weight:800;letter-spacing:-0.5px}
+.logo .cr{color:var(--acc)}
+.logo .ar-tag{font-family:var(--font-ui);font-size:0.65rem;font-weight:600;color:var(--ar);background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.25);border-radius:4px;padding:2px 6px;margin-left:6px;letter-spacing:1.5px;vertical-align:middle}
+.header-right{display:flex;align-items:center;gap:0.75rem}
+.loc{font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.loc strong{color:var(--text)}
+.cart-btn{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:50px;padding:0.45rem 1rem;font-family:var(--font-ui);font-size:0.85rem;font-weight:500;cursor:pointer;transition:all 0.2s;position:relative}
+.cart-btn:hover{border-color:var(--acc);background:rgba(255,95,31,0.08)}
+.cart-dot{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--acc);border-radius:50%;font-size:0.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);transition:transform 0.3s}
+.cart-dot.pop{animation:dotPop 0.4s cubic-bezier(0.36,0.07,0.19,0.97)}
+@keyframes dotPop{0%,100%{transform:scale(1)}40%{transform:scale(1.5)}70%{transform:scale(0.9)}}
 
-  /* ─── SCREEN 2: MENU ─── */
-  #screen-menu { background: var(--bg); flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
-  .menu-top { flex-shrink: 0; background: var(--surface); padding: 1rem 1.4rem .8rem; border-bottom: 1px solid rgba(200,132,30,.15); display: flex; align-items: center; justify-content: space-between; }
-  .menu-logo { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--gold-light); letter-spacing: .12em; }
-  .cart-btn { position: relative; background: none; border: none; cursor: pointer; color: var(--gold); padding: .4rem; }
-  .cart-btn svg { width: 24px; height: 24px; }
-  .cart-count { position: absolute; top: 0; right: 0; background: var(--accent); color: #fff; font-size: .6rem; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; display: none; }
-  .cart-count.visible { display: flex; }
-  .menu-hero { flex-shrink: 0; padding: 1.2rem 1.4rem .6rem; background: linear-gradient(to bottom, var(--surface), var(--bg)); }
-  .menu-hero h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); }
-  .menu-hero p { font-size: .78rem; color: var(--muted); margin-top: .3rem; letter-spacing: .05em; }
-  .categories { flex-shrink: 0; display: flex; gap: .5rem; padding: .6rem 1.4rem; overflow-x: auto; scrollbar-width: none; }
-  .categories::-webkit-scrollbar { display: none; }
-  .cat-btn { flex-shrink: 0; padding: .4rem 1rem; border-radius: 20px; border: 1px solid var(--dim); background: none; color: var(--muted); font-size: .75rem; letter-spacing: .08em; cursor: pointer; transition: all .25s; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
-  .cat-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .menu-grid { flex: 1; overflow-y: auto; padding: .8rem 1.4rem 5rem; scrollbar-width: thin; scrollbar-color: var(--dim) transparent; }
-  .menu-grid::-webkit-scrollbar { width: 3px; }
-  .menu-grid::-webkit-scrollbar-thumb { background: var(--dim); }
-  .food-card { background: var(--card); border-radius: 10px; margin-bottom: .9rem; display: flex; align-items: center; overflow: hidden; cursor: pointer; transition: all .25s; border: 1px solid transparent; }
-  .food-card:hover { border-color: rgba(200,132,30,.3); transform: translateY(-1px); }
-  .food-3d-thumb { width: 100px; height: 90px; flex-shrink: 0; background: var(--card2); position: relative; overflow: hidden; }
-  .food-3d-thumb canvas { width: 100% !important; height: 100% !important; }
-  .food-info { flex: 1; padding: .7rem 1rem; }
-  .food-name { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--text); }
-  .food-desc { font-size: .7rem; color: var(--muted); margin-top: .2rem; line-height: 1.4; }
-  .food-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: .6rem; }
-  .food-price { font-size: .95rem; color: var(--gold); font-weight: 500; }
-  .food-add { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-  .food-add:hover { background: var(--gold); transform: scale(1.1); }
-  .ar-badge { display: inline-flex; align-items: center; gap: .25rem; font-size: .58rem; background: rgba(200,132,30,.15); border: 1px solid rgba(200,132,30,.35); color: var(--gold); padding: .15rem .4rem; border-radius: 3px; margin-left: .4rem; letter-spacing: .05em; }
+/* ── MAIN SCROLLABLE ── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden}
 
-  /* ─── SCREEN 3: FOOD DETAIL ─── */
-  #screen-detail { background: var(--bg); flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
-  .detail-header { flex-shrink: 0; padding: 1rem 1.4rem; display: flex; align-items: center; gap: 1rem; }
-  .back-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 1.3rem; padding: .2rem; }
-  .detail-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--text); }
-  .detail-3d-area { flex-shrink: 0; height: 280px; background: radial-gradient(ellipse at 50% 60%, #2a1e0a 0%, var(--bg) 70%); position: relative; overflow: hidden; }
-  #detail-canvas { width: 100%; height: 100%; display: block; }
-  .ar-btn { position: absolute; bottom: 1rem; right: 1rem; display: flex; align-items: center; gap: .5rem; background: rgba(0,0,0,.6); backdrop-filter: blur(10px); border: 1px solid var(--accent); color: var(--gold); padding: .55rem 1rem; border-radius: 25px; font-size: .72rem; letter-spacing: .1em; cursor: pointer; text-transform: uppercase; font-family: 'DM Sans', sans-serif; transition: all .3s; }
-  .ar-btn:hover { background: rgba(200,132,30,.2); }
-  .ar-btn svg { width: 16px; height: 16px; }
-  .detail-info { flex: 1; overflow-y: auto; padding: 1.2rem 1.4rem; }
-  .detail-food-name { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--text); }
-  .detail-food-sub { font-size: .75rem; color: var(--muted); letter-spacing: .08em; margin-top: .2rem; }
-  .detail-tags { display: flex; gap: .4rem; margin-top: .8rem; flex-wrap: wrap; }
-  .tag { font-size: .62rem; padding: .2rem .6rem; border-radius: 3px; background: var(--card2); color: var(--muted); letter-spacing: .06em; }
-  .detail-desc { font-size: .82rem; color: var(--muted); line-height: 1.7; margin-top: 1rem; }
-  .detail-price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--dim); }
-  .detail-price { font-size: 1.5rem; color: var(--gold); font-weight: 500; }
-  .qty-ctrl { display: flex; align-items: center; gap: .8rem; }
-  .qty-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--card2); border: 1px solid var(--dim); color: var(--text); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-  .qty-btn:hover { border-color: var(--accent); color: var(--gold); }
-  .qty-val { font-size: 1rem; min-width: 20px; text-align: center; }
-  .add-cart-btn { margin-top: 1.2rem; width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--accent), var(--gold)); color: #fff; border: none; border-radius: 4px; font-size: .85rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .3s; font-weight: 500; }
-  .add-cart-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
-  .add-cart-btn.added { background: var(--green); }
+/* ── HERO ── */
+.hero{padding:1.5rem 1.25rem 0.5rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-60px;right:-40px;width:300px;height:300px;background:radial-gradient(circle,rgba(255,95,31,0.12) 0%,transparent 70%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:50px;padding:4px 12px;font-size:0.72rem;font-weight:600;color:var(--ar);letter-spacing:1px;margin-bottom:0.75rem}
+.hero-badge .pulse{width:6px;height:6px;background:var(--ar);border-radius:50%;animation:pulseAnim 1.5s ease infinite}
+@keyframes pulseAnim{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.4)}}
+.hero h1{font-family:var(--font-display);font-size:clamp(1.8rem,5vw,2.8rem);font-weight:800;line-height:1.1;letter-spacing:-1px;margin-bottom:0.4rem}
+.hero h1 .line2{color:transparent;-webkit-text-stroke:1px var(--acc);font-style:italic}
+.hero p{font-size:0.85rem;color:var(--muted);max-width:340px;line-height:1.6;margin-bottom:1.25rem}
+.search-row{display:flex;gap:0.75rem;align-items:center}
+.search-wrap{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:0.7rem 1rem;transition:border-color 0.2s}
+.search-wrap:focus-within{border-color:var(--acc)}
+.search-wrap input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font-ui);font-size:0.9rem}
+.search-wrap input::placeholder{color:var(--muted2)}
+.filter-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:14px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;flex-shrink:0;transition:all 0.2s}
+.filter-btn:hover{border-color:var(--acc)}
 
-  /* ─── SCREEN 4: AR VIEW ─── */
-  #screen-ar { background: #000; flex-direction: column; overflow: hidden; }
-  #ar-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  #ar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .ar-overlay-ui { position: absolute; inset: 0; pointer-events: none; }
-  .ar-top-bar { position: absolute; top: 0; left: 0; right: 0; padding: 1rem 1.4rem; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(to bottom, rgba(0,0,0,.6), transparent); pointer-events: all; }
-  .ar-close { background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.2); color: #fff; width: 38px; height: 38px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
-  .ar-label { font-size: .7rem; letter-spacing: .15em; color: rgba(255,255,255,.7); text-transform: uppercase; }
-  .ar-instructions { position: absolute; bottom: 5rem; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.55); backdrop-filter: blur(12px); border: 1px solid rgba(200,132,30,.3); color: rgba(255,255,255,.8); padding: .7rem 1.4rem; border-radius: 25px; font-size: .72rem; letter-spacing: .08em; text-align: center; white-space: nowrap; }
-  .ar-surface-indicator { position: absolute; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 180px; height: 80px; border: 2px dashed rgba(200,132,30,.5); border-radius: 50%; animation: surface-pulse 1.8s ease-in-out infinite; }
-  @keyframes surface-pulse { 0%,100% { opacity: .4; transform: translate(-50%, 50%) scale(1); } 50% { opacity: .9; transform: translate(-50%, 50%) scale(1.05); } }
-  .ar-snap-btn { position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: rgba(200,132,30,.9); color: #fff; border: none; border-radius: 25px; padding: .8rem 2rem; font-family: 'DM Sans', sans-serif; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; pointer-events: all; }
+/* ── CATEGORIES ── */
+.cats{display:flex;gap:0.6rem;padding:1rem 1.25rem 0.5rem;overflow-x:auto;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:50px;padding:0.45rem 1rem;font-size:0.8rem;font-weight:500;color:var(--muted);cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.cat .cat-icon{font-size:0.9rem}
+.cat.active,.cat:hover{background:var(--acc);border-color:var(--acc);color:#fff}
 
-  /* ─── SCREEN 5: CART ─── */
-  #screen-cart { background: var(--bg); flex-direction: column; align-items: stretch; justify-content: flex-start; overflow: hidden; }
-  .cart-header { flex-shrink: 0; padding: 1rem 1.4rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid rgba(200,132,30,.1); }
-  .cart-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--text); }
-  .cart-items { flex: 1; overflow-y: auto; padding: 1rem 1.4rem; }
-  .cart-item { display: flex; align-items: center; gap: 1rem; padding: .9rem 0; border-bottom: 1px solid var(--card); }
-  .cart-item-thumb { width: 56px; height: 56px; border-radius: 6px; background: var(--card2); flex-shrink: 0; overflow: hidden; }
-  .cart-item-thumb canvas { width: 100% !important; height: 100% !important; }
-  .cart-item-info { flex: 1; }
-  .cart-item-name { font-family: 'Playfair Display', serif; font-size: .95rem; }
-  .cart-item-price { font-size: .82rem; color: var(--gold); margin-top: .2rem; }
-  .cart-item-qty { display: flex; align-items: center; gap: .6rem; }
-  .cq-btn { width: 26px; height: 26px; border-radius: 50%; background: var(--card2); border: 1px solid var(--dim); color: var(--text); cursor: pointer; font-size: .9rem; display: flex; align-items: center; justify-content: center; }
-  .cart-footer { flex-shrink: 0; padding: 1rem 1.4rem; border-top: 1px solid rgba(200,132,30,.15); background: var(--surface); }
-  .cart-total-row { display: flex; justify-content: space-between; margin-bottom: .4rem; font-size: .8rem; color: var(--muted); }
-  .cart-total-row.main { font-size: 1rem; color: var(--text); font-weight: 500; margin-top: .6rem; }
-  .cart-total-row.main .val { color: var(--gold); }
-  .checkout-btn { margin-top: .9rem; width: 100%; padding: .95rem; background: linear-gradient(135deg, var(--accent), var(--gold)); color: #fff; border: none; border-radius: 4px; font-size: .85rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all .3s; }
-  .checkout-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(200,132,30,.3); }
-  .empty-cart { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 1rem; }
-  .empty-cart svg { opacity: .3; }
+/* ── FEATURED BANNER ── */
+.featured{margin:0.5rem 1.25rem 0;background:linear-gradient(135deg,#1A0E05 0%,#0E1A1A 100%);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden}
+.featured::before{content:'';position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:radial-gradient(circle,rgba(255,179,71,0.15),transparent)}
+.feat-text .tag{font-size:0.7rem;font-weight:600;color:var(--acc2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.feat-text h3{font-family:var(--font-display);font-size:1.2rem;font-weight:700;margin-bottom:2px}
+.feat-text p{font-size:0.78rem;color:var(--muted);margin-bottom:0.75rem}
+.feat-btn{background:var(--acc2);color:#000;border:none;border-radius:8px;padding:0.4rem 1rem;font-family:var(--font-ui);font-size:0.8rem;font-weight:600;cursor:pointer}
+.feat-emoji{font-size:3.5rem;filter:drop-shadow(0 0 20px rgba(255,179,71,0.4))}
 
-  /* ─── SCREEN 6: CONFIRM ─── */
-  #screen-confirm { background: var(--bg); }
-  .confirm-inner { text-align: center; padding: 2rem; }
-  .confirm-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(74,144,96,.15); border: 2px solid var(--green); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; }
-  .confirm-inner h2 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--text); }
-  .confirm-inner p { font-size: .82rem; color: var(--muted); margin-top: .6rem; line-height: 1.6; }
-  .order-num { margin-top: 1.5rem; font-size: .7rem; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; }
-  .order-num span { color: var(--gold); }
-  .confirm-back { margin-top: 2rem; padding: .85rem 2.5rem; background: var(--card2); border: 1px solid var(--dim); color: var(--text); border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; transition: all .3s; }
-  .confirm-back:hover { border-color: var(--accent); color: var(--gold); }
+/* ── SECTION ── */
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.25rem 0.75rem}
+.sec-head h2{font-family:var(--font-display);font-size:1.1rem;font-weight:700}
+.sec-head a{font-size:0.78rem;color:var(--acc);font-weight:500;cursor:pointer;text-decoration:none}
 
-  /* ─── TOAST ─── */
-  .toast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--card2); border: 1px solid rgba(200,132,30,.3); color: var(--text); padding: .65rem 1.4rem; border-radius: 25px; font-size: .78rem; letter-spacing: .06em; opacity: 0; transition: all .4s; z-index: 999; white-space: nowrap; }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* ── FOOD GRID ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;padding:0 1.25rem 1rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:transform 0.25s,border-color 0.25s,box-shadow 0.25s;position:relative}
+.card:hover{transform:translateY(-5px);border-color:var(--border2);box-shadow:0 20px 40px rgba(0,0,0,0.4)}
+.card-img{height:170px;background:var(--bg3);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card-img .food-emoji{font-size:4.5rem;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.5));transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1)}
+.card:hover .food-emoji{transform:scale(1.15) rotate(-5deg)}
+.card-img-bg{position:absolute;inset:0;background:radial-gradient(circle at 60% 40%,var(--grad-color,rgba(255,95,31,0.15)) 0%,transparent 70%)}
+.tag-badge{position:absolute;top:10px;left:10px;font-size:0.65rem;font-weight:700;letter-spacing:0.5px;padding:3px 9px;border-radius:50px}
+.tag-badge.hot{background:rgba(255,95,31,0.15);border:1px solid var(--acc);color:var(--acc)}
+.tag-badge.new{background:rgba(0,255,163,0.1);border:1px solid var(--ar2);color:var(--ar2)}
+.tag-badge.fave{background:rgba(255,179,71,0.12);border:1px solid var(--acc2);color:var(--acc2)}
+.ar-chip{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);border:1px solid rgba(0,229,255,0.4);border-radius:50px;padding:3px 8px;font-size:0.62rem;font-weight:700;color:var(--ar);letter-spacing:0.5px}
+.ar-chip::before{content:'';width:5px;height:5px;background:var(--ar);border-radius:50%;animation:pulseAnim 1.5s infinite}
+.card-body{padding:1rem}
+.card-name{font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:0.3rem;line-height:1.3}
+.card-meta{display:flex;align-items:center;gap:0.75rem;font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem}
+.card-meta .star{color:var(--acc2);font-size:0.8rem}
+.card-desc{font-size:0.78rem;color:var(--muted);line-height:1.55;margin-bottom:0.85rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-foot{display:flex;align-items:center;justify-content:space-between}
+.price{font-family:var(--font-display);font-size:1.15rem;font-weight:700;color:var(--acc2)}
+.price .currency{font-family:var(--font-ui);font-size:0.8rem;font-weight:500;opacity:0.7}
+.actions{display:flex;gap:0.5rem}
+.btn-ar-view{display:flex;align-items:center;gap:4px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.35);color:var(--ar);border-radius:10px;padding:0.4rem 0.75rem;font-family:var(--font-ui);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.btn-ar-view:hover{background:var(--ar);color:#000}
+.btn-add-card{background:var(--acc);border:none;color:#fff;border-radius:10px;padding:0.4rem 0.85rem;font-family:var(--font-ui);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+.btn-add-card:hover{background:#e04010;transform:scale(0.97)}
 
-  /* ─── LOADING ─── */
-  .loading-spinner { width: 32px; height: 32px; border: 2px solid var(--dim); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin: 2rem auto; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── CART OVERLAY ── */
+.cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(4px)}
+.cart-overlay.open{opacity:1;pointer-events:all}
+.cart-panel{position:fixed;right:0;top:0;bottom:0;width:min(420px,100vw);background:var(--bg2);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform 0.38s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column}
+.cart-panel.open{transform:translateX(0)}
+.cart-hd{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.cart-hd h2{font-family:var(--font-display);font-size:1.2rem;font-weight:700}
+.cart-hd .badge{background:var(--acc);color:#fff;font-size:0.7rem;font-weight:700;border-radius:50px;padding:2px 8px;margin-left:6px}
+.close-x{background:var(--bg3);border:1px solid var(--border2);color:var(--muted);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.close-x:hover{color:var(--text);border-color:var(--acc)}
+.cart-body{flex:1;overflow-y:auto;padding:1rem 1.25rem}
+.cart-empty-state{text-align:center;padding:3rem 0}
+.cart-empty-state .empty-icon{font-size:3.5rem;margin-bottom:0.75rem;display:block;opacity:0.4}
+.cart-empty-state p{color:var(--muted);font-size:0.9rem}
+.ci{display:flex;align-items:center;gap:0.9rem;padding:0.85rem 0;border-bottom:1px solid var(--border)}
+.ci-emoji{width:52px;height:52px;background:var(--bg3);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;border:1px solid var(--border)}
+.ci-info{flex:1;min-width:0}
+.ci-name{font-weight:500;font-size:0.88rem;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-price{font-size:0.82rem;color:var(--acc2);font-weight:600}
+.qty-row{display:flex;align-items:center;gap:8px}
+.qb{background:var(--bg3);border:1px solid var(--border2);color:var(--text);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:0.95rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+.qb:hover{border-color:var(--acc);color:var(--acc)}
+.qn{font-size:0.85rem;font-weight:600;min-width:18px;text-align:center}
+.cart-ft{padding:1rem 1.25rem 1.5rem;border-top:1px solid var(--border)}
+.sum-row{display:flex;justify-content:space-between;font-size:0.85rem;color:var(--muted);margin-bottom:0.4rem}
+.sum-row.total{font-size:1rem;font-weight:600;color:var(--text);margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)}
+.sum-row.total span:last-child{color:var(--acc2)}
+.checkout-btn{width:100%;margin-top:1rem;background:linear-gradient(135deg,var(--acc),#FF8C1A);border:none;color:#fff;border-radius:14px;padding:1rem;font-family:var(--font-ui);font-size:1rem;font-weight:600;cursor:pointer;transition:opacity 0.2s;letter-spacing:0.3px}
+.checkout-btn:hover{opacity:0.9}
+.checkout-btn:active{transform:scale(0.98)}
 
-  .no-camera-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: .85rem; text-align: center; padding: 2rem; gap: 1rem; background: #0a0a0a; }
-  .no-camera-msg svg { opacity: .3; }
+/* ── AR VIEWER ── */
+#ar-viewer{position:fixed;inset:0;z-index:300;display:none;background:#000;overflow:hidden}
+#ar-viewer.open{display:block}
+#cam-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55}
+#space-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 40%,#0D0525 0%,#000510 50%,#000000 100%);display:none}
+.space-stars{position:absolute;inset:0;overflow:hidden}
+#ar-canvas{position:absolute;inset:0;width:100%!important;height:100%!important;z-index:1}
+
+/* AR Scanner animation */
+.ar-scanner{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{position:relative;width:260px;height:260px}
+.scan-corner{position:absolute;width:32px;height:32px;border-color:var(--ar);border-style:solid;border-width:0}
+.scan-corner.tl{top:0;left:0;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0}
+.scan-corner.tr{top:0;right:0;border-top-width:3px;border-right-width:3px;border-radius:0 4px 0 0}
+.scan-corner.bl{bottom:0;left:0;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 4px}
+.scan-corner.br{bottom:0;right:0;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0}
+.scan-line{position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(to right,transparent,var(--ar),transparent);top:0;animation:scanLine 1.8s ease-in-out infinite;box-shadow:0 0 8px var(--ar)}
+@keyframes scanLine{0%{top:0;opacity:1}80%{top:calc(100% - 2px);opacity:1}100%{top:calc(100% - 2px);opacity:0}}
+.scan-dots{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:8px;width:100%;height:100%;position:absolute}
+.scan-dot{width:3px;height:3px;background:rgba(0,229,255,0.2);border-radius:50%;justify-self:center;align-self:center}
+.scan-dot.lit{background:var(--ar);box-shadow:0 0 4px var(--ar);animation:dotLit 0.4s ease forwards}
+@keyframes dotLit{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+.scan-status{margin-top:1.25rem;font-size:0.8rem;font-weight:600;color:var(--ar);letter-spacing:3px;text-transform:uppercase;text-align:center}
+.scan-status .blink{animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.scan-bar{width:260px;height:3px;background:rgba(0,229,255,0.15);border-radius:2px;margin-top:0.6rem;overflow:hidden}
+.scan-bar-fill{height:100%;background:var(--ar);border-radius:2px;width:0%;transition:width 0.1s;box-shadow:0 0 8px var(--ar)}
+
+/* AR HUD */
+.ar-hud{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;pointer-events:none}
+.ar-top-bar{display:flex;align-items:center;justify-content:space-between;padding:3rem 1.25rem 1rem;pointer-events:all}
+.ar-close-btn{background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:50%;width:44px;height:44px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s}
+.ar-close-btn:hover{background:rgba(255,95,31,0.4)}
+.ar-mode-chip{background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);border:1px solid rgba(0,229,255,0.4);border-radius:50px;padding:6px 14px;display:flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:700;color:var(--ar);letter-spacing:1px}
+.ar-mode-chip .live-dot{width:6px;height:6px;background:var(--ar);border-radius:50%;animation:pulseAnim 1.5s infinite}
+.ar-controls{display:flex;flex-direction:column;align-items:flex-end;gap:0.5rem;padding:0 1.25rem;pointer-events:all}
+.ctrl-btn{background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;width:44px;height:44px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.ctrl-btn:hover{border-color:var(--ar);color:var(--ar)}
+.drag-hint{flex:1;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.drag-hint span{background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:50px;padding:5px 14px;font-size:0.72rem;color:rgba(255,255,255,0.6)}
+.ar-bottom-panel{background:linear-gradient(to top,rgba(0,0,0,0.95) 0%,rgba(0,0,0,0.7) 60%,transparent 100%);padding:1.5rem 1.25rem 2rem;pointer-events:all}
+.ar-food-name{font-family:var(--font-display);font-size:2rem;font-weight:800;color:#fff;line-height:1.1;margin-bottom:0.3rem;letter-spacing:-0.5px}
+.ar-food-sub{font-size:0.82rem;color:rgba(255,255,255,0.6);margin-bottom:0.75rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ar-food-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.ar-price{font-family:var(--font-display);font-size:1.5rem;font-weight:800;color:var(--acc2)}
+.ar-rating{display:flex;align-items:center;gap:6px;font-size:0.82rem;color:rgba(255,255,255,0.7)}
+.ar-rating .star{color:var(--acc2)}
+.ar-btn-row{display:flex;gap:0.75rem}
+.btn-ar-order{flex:1;background:linear-gradient(135deg,var(--acc),#FF8C1A);border:none;color:#fff;border-radius:14px;padding:0.95rem;font-family:var(--font-ui);font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.2px}
+.btn-ar-order:hover{transform:scale(0.98);opacity:0.9}
+.btn-share{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:14px;padding:0.95rem 1.1rem;font-size:1rem;cursor:pointer;transition:all 0.2s}
+.btn-share:hover{border-color:rgba(255,255,255,0.35)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--green);color:var(--green);border-radius:50px;padding:0.6rem 1.4rem;font-size:0.82rem;font-weight:600;z-index:500;transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{flex-shrink:0;display:flex;background:rgba(8,8,15,0.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:0.6rem 0 0.8rem}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:0.3rem 0;opacity:0.45;transition:opacity 0.2s;font-size:0.62rem;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)}
+.nav-item.active{opacity:1;color:var(--acc)}
+.nav-icon{font-size:1.3rem}
 </style>
 </head>
 <body>
 
-<!-- ══════════ SCREEN 1: QR SCAN ══════════ -->
-<div id="screen-scan" class="screen active">
-  <div class="scan-bg"></div>
-  <div class="scan-grain"></div>
-  <div class="scan-header">
-    <div class="logo">SAVEUR</div>
-    <div class="tagline">Augmented Dining Experience</div>
-  </div>
-  <div class="qr-frame" id="qr-frame">
-    <div class="qr-corner tl"></div>
-    <div class="qr-corner tr"></div>
-    <div class="qr-corner bl"></div>
-    <div class="qr-corner br"></div>
-    <div class="qr-inner">
-      <!-- Inline QR pattern -->
-      <svg class="qr-code-img" viewBox="0 0 100 100" fill="white">
-        <rect x="5" y="5" width="35" height="35" rx="2" fill="none" stroke="white" stroke-width="3"/>
-        <rect x="12" y="12" width="21" height="21" rx="1" fill="white"/>
-        <rect x="60" y="5" width="35" height="35" rx="2" fill="none" stroke="white" stroke-width="3"/>
-        <rect x="67" y="12" width="21" height="21" rx="1" fill="white"/>
-        <rect x="5" y="60" width="35" height="35" rx="2" fill="none" stroke="white" stroke-width="3"/>
-        <rect x="12" y="67" width="21" height="21" rx="1" fill="white"/>
-        <rect x="48" y="48" width="8" height="8" fill="white"/>
-        <rect x="60" y="48" width="8" height="8" fill="white"/>
-        <rect x="72" y="48" width="8" height="8" fill="white"/>
-        <rect x="84" y="48" width="8" height="8" fill="white"/>
-        <rect x="48" y="60" width="8" height="8" fill="white"/>
-        <rect x="72" y="60" width="8" height="8" fill="white"/>
-        <rect x="48" y="72" width="8" height="8" fill="white"/>
-        <rect x="60" y="72" width="8" height="8" fill="white"/>
-        <rect x="84" y="72" width="8" height="8" fill="white"/>
-        <rect x="48" y="84" width="8" height="8" fill="white"/>
-        <rect x="72" y="84" width="8" height="8" fill="white"/>
-        <rect x="84" y="84" width="8" height="8" fill="white"/>
-      </svg>
-    </div>
-    <div class="qr-beam"></div>
-  </div>
-  <button class="scan-btn" id="scan-btn">Scan QR Code</button>
-  <div class="scan-hint">Point camera at table QR code</div>
-</div>
-
-<!-- ══════════ SCREEN 2: MENU ══════════ -->
-<div id="screen-menu" class="screen">
-  <div class="menu-top">
-    <div class="menu-logo">SAVEUR</div>
-    <button class="cart-btn" onclick="showScreen('cart')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <path d="M16 10a4 4 0 01-8 0"/>
-      </svg>
-      <span class="cart-count" id="cart-count">0</span>
+<!-- HEADER -->
+<div class="header">
+  <div class="logo"><span class="cr">CR</span>AVE<span class="ar-tag">AR</span></div>
+  <div class="header-right">
+    <div class="loc">📍 <strong>Guwahati</strong>, Assam</div>
+    <button class="cart-btn" onclick="openCart()">
+      🛒 Cart
+      <span class="cart-dot" id="cart-dot">0</span>
     </button>
   </div>
-  <div class="menu-hero">
-    <h1>Today's Menu</h1>
-    <p>Tap any item to view in 3D · Place on your table with AR</p>
-  </div>
-  <div class="categories" id="categories"></div>
-  <div class="menu-grid" id="menu-grid"></div>
 </div>
 
-<!-- ══════════ SCREEN 3: DETAIL ══════════ -->
-<div id="screen-detail" class="screen">
-  <div class="detail-header">
-    <button class="back-btn" onclick="showScreen('menu')">←</button>
-    <span class="detail-title" id="detail-head-title"></span>
-  </div>
-  <div class="detail-3d-area">
-    <canvas id="detail-canvas"></canvas>
-    <button class="ar-btn" onclick="openAR()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M21 16V8a2 2 0 00-1-1.73L13 2.27a2 2 0 00-2 0L4 6.27A2 2 0 003 8v8a2 2 0 001 1.73L11 21.73a2 2 0 002 0l7-4a2 2 0 001-1.73z"/>
-      </svg>
-      View in AR
-    </button>
-  </div>
-  <div class="detail-info">
-    <div style="display:flex;align-items:baseline;gap:.5rem;">
-      <div class="detail-food-name" id="detail-name"></div>
+<!-- MAIN -->
+<div class="main" id="main">
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge"><span class="pulse"></span>AR-POWERED FOOD DISCOVERY</div>
+    <h1>Real Food,<br><span class="line2">Real World.</span></h1>
+    <p>Point your camera & watch your favourite dishes appear right in front of you — in true 3D.</p>
+    <div class="search-row">
+      <div class="search-wrap">
+        <span style="color:var(--muted);font-size:1rem">🔍</span>
+        <input type="text" placeholder="Search dishes, restaurants..." id="search-inp" oninput="filterFoods()">
+      </div>
+      <button class="filter-btn">⚙</button>
     </div>
-    <div class="detail-food-sub" id="detail-sub"></div>
-    <div class="detail-tags" id="detail-tags"></div>
-    <div class="detail-desc" id="detail-desc"></div>
-    <div class="detail-price-row">
-      <div class="detail-price" id="detail-price"></div>
-      <div class="qty-ctrl">
-        <button class="qty-btn" onclick="changeQty(-1)">−</button>
-        <span class="qty-val" id="qty-val">1</span>
-        <button class="qty-btn" onclick="changeQty(1)">+</button>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="cats" id="cats"></div>
+
+  <!-- FEATURED -->
+  <div class="featured" onclick="openAR(1)">
+    <div class="feat-text">
+      <div class="tag">🔥 Today's Special</div>
+      <h3>Chicken Biryani</h3>
+      <p>Aromatic basmati, slow-cooked — <strong style="color:var(--acc2)">₹249</strong></p>
+      <button class="feat-btn" onclick="event.stopPropagation();addToCart(1)">Add to Cart</button>
+    </div>
+    <div class="feat-emoji">🍛</div>
+  </div>
+
+  <!-- GRID -->
+  <div class="sec-head">
+    <h2>Popular Near You</h2>
+    <a onclick="filterFoods()">See all</a>
+  </div>
+  <div class="grid" id="food-grid"></div>
+  <div style="height:1rem"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active"><span class="nav-icon">🏠</span>Home</div>
+  <div class="nav-item"><span class="nav-icon">🔍</span>Explore</div>
+  <div class="nav-item" onclick="openCart()"><span class="nav-icon">🛒</span>Cart</div>
+  <div class="nav-item"><span class="nav-icon">👤</span>Profile</div>
+</div>
+
+<!-- CART PANEL -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-panel" id="cart-panel">
+  <div class="cart-hd">
+    <div><h2 style="display:inline">Your Order</h2><span class="badge" id="cart-badge">0</span></div>
+    <button class="close-x" onclick="closeCart()">✕</button>
+  </div>
+  <div class="cart-body" id="cart-body"></div>
+  <div class="cart-ft" id="cart-ft" style="display:none">
+    <div class="sum-row"><span>Subtotal</span><span id="sum-sub">₹0</span></div>
+    <div class="sum-row"><span>Delivery</span><span>₹35</span></div>
+    <div class="sum-row"><span>Taxes</span><span id="sum-tax">₹0</span></div>
+    <div class="sum-row total"><span>Total</span><span id="sum-total">₹0</span></div>
+    <button class="checkout-btn" onclick="placeOrder()">Place Order  →</button>
+  </div>
+</div>
+
+<!-- AR VIEWER -->
+<div id="ar-viewer">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <div id="space-bg"><div class="space-stars" id="stars"></div></div>
+  <canvas id="ar-canvas"></canvas>
+
+  <!-- Scanner overlay (shown during scanning phase) -->
+  <div class="ar-scanner" id="ar-scanner">
+    <div class="scan-frame">
+      <div class="scan-corner tl"></div>
+      <div class="scan-corner tr"></div>
+      <div class="scan-corner bl"></div>
+      <div class="scan-corner br"></div>
+      <div class="scan-dots" id="scan-dots"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scan-status">Scanning environment<span class="blink">...</span></div>
+    <div class="scan-bar"><div class="scan-bar-fill" id="scan-bar-fill"></div></div>
+  </div>
+
+  <!-- HUD (shown after scanning) -->
+  <div class="ar-hud" id="ar-hud" style="display:none">
+    <div class="ar-top-bar">
+      <button class="ar-close-btn" onclick="closeAR()">✕</button>
+      <div class="ar-mode-chip"><span class="live-dot"></span>3D AR LIVE</div>
+      <div style="width:44px"></div>
+    </div>
+    <div class="ar-controls">
+      <button class="ctrl-btn" onclick="zoomFood(1.2)" title="Zoom in">＋</button>
+      <button class="ctrl-btn" onclick="zoomFood(0.8)" title="Zoom out">－</button>
+      <button class="ctrl-btn" onclick="resetFood()" title="Reset">↺</button>
+    </div>
+    <div class="drag-hint"><span>👆 Drag to rotate · Pinch to zoom</span></div>
+    <div class="ar-bottom-panel">
+      <div class="ar-food-name" id="ar-fname"></div>
+      <div class="ar-food-sub" id="ar-fsub"></div>
+      <div class="ar-food-row">
+        <div class="ar-price" id="ar-fprice"></div>
+        <div class="ar-rating"><span class="star">★</span><span id="ar-frat"></span></div>
+      </div>
+      <div class="ar-btn-row">
+        <button class="btn-ar-order" id="ar-order-btn">🛒  Add to Cart</button>
+        <button class="btn-share" onclick="showToast('Link copied! 🔗')">↗</button>
       </div>
     </div>
-    <button class="add-cart-btn" id="add-cart-btn" onclick="addToCart()">Add to Order</button>
-  </div>
-</div>
-
-<!-- ══════════ SCREEN 4: AR ══════════ -->
-<div id="screen-ar" class="screen">
-  <video id="ar-video" autoplay playsinline muted></video>
-  <canvas id="ar-canvas"></canvas>
-  <div class="ar-overlay-ui">
-    <div class="ar-top-bar">
-      <button class="ar-close" onclick="closeAR()">✕</button>
-      <div class="ar-label" id="ar-food-label"></div>
-      <div style="width:38px;"></div>
-    </div>
-    <div class="ar-surface-indicator" id="ar-surface-ind"></div>
-    <div class="ar-instructions" id="ar-instructions">Move camera slowly to detect surface</div>
-    <button class="ar-snap-btn" onclick="snapAR()">📸 Capture</button>
-  </div>
-  <div class="no-camera-msg" id="no-camera-msg" style="display:none;">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-    <div>Camera not available.<br>Please allow camera access for AR viewing.</div>
-    <button onclick="closeAR()" style="background:var(--card2);border:1px solid var(--dim);color:var(--text);padding:.6rem 1.4rem;border-radius:4px;cursor:pointer;font-family:inherit;">Go Back</button>
-  </div>
-</div>
-
-<!-- ══════════ SCREEN 5: CART ══════════ -->
-<div id="screen-cart" class="screen">
-  <div class="cart-header">
-    <button class="back-btn" onclick="showScreen('menu')">←</button>
-    <span class="cart-title">Your Order</span>
-  </div>
-  <div id="cart-empty" class="empty-cart" style="display:none;">
-    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2 3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-    <span>Your order is empty</span>
-  </div>
-  <div class="cart-items" id="cart-items"></div>
-  <div class="cart-footer" id="cart-footer" style="display:none;">
-    <div class="cart-total-row"><span>Subtotal</span><span class="val" id="cart-sub">₹0</span></div>
-    <div class="cart-total-row"><span>Tax (5%)</span><span class="val" id="cart-tax">₹0</span></div>
-    <div class="cart-total-row main"><span>Total</span><span class="val" id="cart-total">₹0</span></div>
-    <button class="checkout-btn" onclick="placeOrder()">Place Order</button>
-  </div>
-</div>
-
-<!-- ══════════ SCREEN 6: CONFIRM ══════════ -->
-<div id="screen-confirm" class="screen">
-  <div class="confirm-inner">
-    <div class="confirm-icon">✓</div>
-    <h2>Order Placed!</h2>
-    <p>Your delicious food is being prepared.<br>Estimated time: 20–25 minutes.</p>
-    <div class="order-num">Order #<span id="order-num-val"></span></div>
-    <button class="confirm-back" onclick="resetAndGoHome()">Back to Menu</button>
   </div>
 </div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ══════════════════════════════════════════
+// ═══════════════════════════════════════
 //  DATA
-// ══════════════════════════════════════════
-const MENU = [
-  {
-    id: 1, category: 'Mains',
-    name: 'Wagyu Burger', sub: 'Signature Dish',
-    price: 680, desc: 'Double wagyu patty with aged cheddar, caramelised onions, truffle aioli, pickled jalapeños in a brioche bun. Served with hand-cut fries.',
-    tags: ['Beef', 'Signature', 'Medium Spicy'],
-    model: 'burger', color: '#d4882a'
-  },
-  {
-    id: 2, category: 'Mains',
-    name: 'Margherita Pizza', sub: 'Wood-Fired',
-    price: 520, desc: 'Classic Neapolitan-style pizza with San Marzano tomato sauce, fresh buffalo mozzarella, basil leaves, and extra virgin olive oil.',
-    tags: ['Vegetarian', 'Italian', 'Mild'],
-    model: 'pizza', color: '#d44020'
-  },
-  {
-    id: 3, category: 'Mains',
-    name: 'Tonkotsu Ramen', sub: 'Chef\'s Special',
-    price: 450, desc: 'Rich 18-hour pork bone broth with chashu pork, soft-boiled ramen egg, bamboo shoots, nori, and spring onions.',
-    tags: ['Pork', 'Japanese', 'Rich'],
-    model: 'ramen', color: '#c0780a'
-  },
-  {
-    id: 4, category: 'Starters',
-    name: 'Sushi Platter', sub: '12 Pieces',
-    price: 890, desc: 'Assorted nigiri and maki featuring salmon, tuna, yellowtail, and avocado. Served with pickled ginger, wasabi, and premium soy sauce.',
-    tags: ['Seafood', 'Japanese', 'Fresh'],
-    model: 'sushi', color: '#f08040'
-  },
-  {
-    id: 5, category: 'Mains',
-    name: 'Grilled Ribeye', sub: '250g — Dry Aged',
-    price: 1200, desc: 'Premium 28-day dry-aged ribeye cooked to perfection, served with truffle butter, roasted garlic, asparagus, and red wine jus.',
-    tags: ['Beef', 'Grill', 'Premium'],
-    model: 'steak', color: '#a84020'
-  },
-  {
-    id: 6, category: 'Desserts',
-    name: 'Crème Brûlée', sub: 'Classic French',
-    price: 280, desc: 'Silky vanilla custard with a perfectly caramelised sugar crust. Served with fresh raspberries and mint.',
-    tags: ['Vegetarian', 'French', 'Sweet'],
-    model: 'creme', color: '#e8c060'
-  },
-  {
-    id: 7, category: 'Starters',
-    name: 'Truffle Fries', sub: 'House Special',
-    price: 240, desc: 'Crispy Belgian frites tossed in white truffle oil, shaved parmesan, fresh herbs, and sea salt flakes.',
-    tags: ['Vegetarian', 'Snack', 'Truffle'],
-    model: 'fries', color: '#d4a030'
-  },
-  {
-    id: 8, category: 'Drinks',
-    name: 'Matcha Latte', sub: 'Ceremonial Grade',
-    price: 180, desc: 'Ceremonial grade matcha whisked with steamed oat milk, lightly sweetened with agave. Hot or iced.',
-    tags: ['Vegan', 'Japanese', 'Beverage'],
-    model: 'drink', color: '#60a050'
-  },
+// ═══════════════════════════════════════
+const FOODS=[
+  {id:1,name:"Chicken Biryani",cat:"Indian",price:249,emoji:"🍛",desc:"Fragrant basmati rice layered with tender chicken, saffron, caramelised onions & dum-cooked spices",rating:4.9,time:"30-35",model:"biryani",tag:"hot",grad:"rgba(255,140,0,0.18)"},
+  {id:2,name:"Butter Chicken",cat:"Indian",price:289,emoji:"🍲",desc:"Succulent chicken in a velvety tomato-cream sauce, slow-simmered with aromatic spices & served with naan",rating:4.8,time:"25-30",model:"curry",tag:"fave",grad:"rgba(255,70,0,0.15)"},
+  {id:3,name:"Masala Dosa",cat:"South Indian",price:129,emoji:"🥞",desc:"Crispy golden rice crepe stuffed with spiced potato masala, served with sambar & three chutneys",rating:4.7,time:"15-20",model:"dosa",grad:"rgba(255,200,80,0.12)"},
+  {id:4,name:"Dragon Sushi Roll",cat:"Japanese",price:479,emoji:"🍱",desc:"Salmon & avocado inside-out roll topped with tobiko, spicy mayo and a soy-mirin glaze",rating:4.9,time:"15-20",model:"sushi",tag:"new",grad:"rgba(0,200,150,0.12)"},
+  {id:5,name:"Smash Burger",cat:"Burgers",price:219,emoji:"🍔",desc:"Double smash patty, American cheddar, caramelised onions & house sauce on a toasted brioche bun",rating:4.8,time:"20-25",model:"burger",tag:"hot",grad:"rgba(255,95,31,0.15)"},
+  {id:6,name:"Tonkotsu Ramen",cat:"Japanese",price:349,emoji:"🍜",desc:"Eighteen-hour pork bone broth with chashu, soft-boiled egg, nori, bamboo shoots & spring onion",rating:4.9,time:"20-25",model:"ramen",grad:"rgba(255,160,60,0.13)"},
+  {id:7,name:"Paneer Tikka",cat:"Indian",price:219,emoji:"🧆",desc:"Chunks of cottage cheese marinated in hung curd & spices, char-grilled in a tandoor with peppers & onion",rating:4.7,time:"20-25",model:"tikka",tag:"fave",grad:"rgba(255,120,0,0.14)"},
+  {id:8,name:"Truffle Pasta",cat:"Italian",price:399,emoji:"🍝",desc:"Fresh tagliatelle in a black truffle cream, wild mushrooms, parmesan crisps & crispy pancetta",rating:4.8,time:"20-30",model:"pasta",tag:"new",grad:"rgba(200,160,80,0.12)"},
+  {id:9,name:"Gulab Jamun Sundae",cat:"Desserts",price:159,emoji:"🍮",desc:"Warm gulab jamun served over vanilla gelato with rose syrup, pistachio crumble & edible gold",rating:4.9,time:"10-15",model:"icecream",tag:"fave",grad:"rgba(255,100,200,0.12)"},
+  {id:10,name:"Crispy BBQ Wings",cat:"Snacks",price:279,emoji:"🍗",desc:"12 golden-fried wings tossed in smoky honey-chipotle BBQ glaze, served with ranch dip",rating:4.7,time:"20-25",model:"wings",grad:"rgba(180,70,0,0.15)"},
 ];
-const CATEGORIES = ['All', ...new Set(MENU.map(i => i.category))];
 
-// ══════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════
-let cart = [];
-let currentItem = null;
-let currentQty = 1;
-let detailScene = null, detailRenderer = null, detailAnimId = null;
-let arScene = null, arRenderer = null, arAnimId = null, arStream = null;
-let thumbScenes = {};
-let activeCategory = 'All';
+const CATS=["All","Indian","South Indian","Japanese","Burgers","Italian","Snacks","Desserts"];
+let cart={};
+let activeCat="All";
+let arFood=null;
 
-// ══════════════════════════════════════════
-//  NAVIGATION
-// ══════════════════════════════════════════
-function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById('screen-' + name);
-  if (el) el.classList.add('active');
-  if (name === 'menu') renderMenu();
-  if (name === 'cart') renderCart();
-}
+// ═══════════════════════════════════════
+//  THREE.JS GLOBALS
+// ═══════════════════════════════════════
+let renderer,scene,camera,foodGroup,animId;
+let dragging=false,prevXY={x:0,y:0},foodScale=1;
+let autoSpin=true;
 
-// ══════════════════════════════════════════
-//  QR SCAN
-// ══════════════════════════════════════════
-function simulateScan() {
-  const frame = document.getElementById('qr-frame');
-  frame.classList.add('scan-anim');
-  setTimeout(() => { frame.classList.remove('scan-anim'); showScreen('menu'); }, 500);
-}
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+(function init(){
+  buildCats();
+  renderGrid();
+  updateCart();
+  buildStars();
+  buildScanDots();
+})();
 
-// ══════════════════════════════════════════
-//  3D MODEL BUILDER
-// ══════════════════════════════════════════
-function buildFoodModel(type, scene) {
-  const group = new THREE.Group();
-  const M = THREE.MeshStandardMaterial;
-
-  if (type === 'burger') {
-    const bun = (y, r, c) => {
-      const g = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI*2, 0, Math.PI/2);
-      const m = new THREE.Mesh(g, new M({ color: c, roughness: .7, metalness: 0 }));
-      m.position.y = y; m.rotation.x = type === 'burger' ? 0 : 0;
-      return m;
-    };
-    const disc = (y, r, h, c, rough=.6) => {
-      const g = new THREE.CylinderGeometry(r, r, h, 32);
-      const m = new THREE.Mesh(g, new M({ color: c, roughness: rough, metalness: 0 }));
-      m.position.y = y; return m;
-    };
-    group.add(disc(-0.5, 1.1, 0.45, '#c47a30')); // bottom bun
-    group.add(disc(-0.1, 1.0, 0.25, '#3a2010')); // patty 1
-    group.add(disc(0.2, 0.95, 0.12, '#e8c830')); // cheese
-    group.add(disc(0.35, 1.0, 0.1, '#58a040')); // lettuce
-    group.add(disc(0.48, 0.9, 0.12, '#d04020')); // tomato
-    group.add(disc(0.62, 0.9, 0.25, '#3a2010')); // patty 2
-    // top bun (sphere cap)
-    const topG = new THREE.SphereGeometry(1.1, 24, 16, 0, Math.PI*2, 0, Math.PI*0.55);
-    const topBun = new THREE.Mesh(topG, new M({ color: '#c87820', roughness: .7 }));
-    topBun.position.y = 0.72; group.add(topBun);
-    // sesame seeds
-    for(let i=0;i<8;i++) {
-      const sg = new THREE.EllipsoidGeometry ? new THREE.SphereGeometry(.06,8,8) : new THREE.SphereGeometry(.06,8,8);
-      const s = new THREE.Mesh(sg, new M({color:'#f8e8b0',roughness:.9}));
-      const a = (i/8)*Math.PI*2; s.position.set(Math.cos(a)*.6, 1.55, Math.sin(a)*.6); group.add(s);
-    }
-
-  } else if (type === 'pizza') {
-    // base
-    const baseG = new THREE.CylinderGeometry(1.4, 1.4, .12, 32);
-    group.add(new THREE.Mesh(baseG, new M({ color: '#d4a050', roughness: .8 })));
-    // crust ring
-    const crustG = new THREE.TorusGeometry(1.4, .12, 8, 40);
-    const crust = new THREE.Mesh(crustG, new M({ color: '#c47830', roughness: .9 }));
-    crust.position.y = .05; group.add(crust);
-    // sauce
-    const sauceG = new THREE.CylinderGeometry(1.28, 1.28, .04, 32);
-    const sauce = new THREE.Mesh(sauceG, new M({ color: '#c03820', roughness: .7 }));
-    sauce.position.y = .08; group.add(sauce);
-    // cheese blobs
-    for(let i=0;i<12;i++) {
-      const a=(i/12)*Math.PI*2, r=.5+Math.random()*.6;
-      const cg = new THREE.SphereGeometry(.18+Math.random()*.1, 8, 6);
-      const cb = new THREE.Mesh(cg, new M({ color: '#f0e080', roughness: .6 }));
-      cb.position.set(Math.cos(a)*r, .15, Math.sin(a)*r); cb.scale.y = .4; group.add(cb);
-    }
-    // pepperoni
-    for(let i=0;i<7;i++) {
-      const a=(i/7)*Math.PI*2+.3, r=.7;
-      const pg = new THREE.CylinderGeometry(.16,.16,.05,16);
-      const pb = new THREE.Mesh(pg, new M({ color: '#a02010', roughness: .8 }));
-      pb.position.set(Math.cos(a)*r, .17, Math.sin(a)*r); group.add(pb);
-    }
-
-  } else if (type === 'ramen') {
-    // bowl
-    const bowlG = new THREE.CylinderGeometry(1.3, .9, .8, 32, 1, true);
-    group.add(new THREE.Mesh(bowlG, new M({ color: '#e8e0d0', roughness: .3, metalness: .1 })));
-    const bowlBase = new THREE.CylinderGeometry(.9,.9,.08,32);
-    group.add(new THREE.Mesh(bowlBase, new M({ color: '#e8e0d0', roughness: .3 })));
-    // broth
-    const brothG = new THREE.CylinderGeometry(1.25, 1.25, .05, 32);
-    const broth = new THREE.Mesh(brothG, new M({ color: '#c07020', roughness: .1, metalness: .05, transparent: true, opacity: .9 }));
-    broth.position.y = .38; group.add(broth);
-    // noodles (torus knots)
-    for(let i=0;i<4;i++) {
-      const ng = new THREE.TorusGeometry(.35+i*.08,.04,6,20);
-      const n = new THREE.Mesh(ng, new M({ color: '#f0e8b0', roughness: .9 }));
-      n.position.set((i-.5)*.2, .42, (i*.15)-.2);
-      n.rotation.x = Math.PI/2 + i*.3; n.rotation.z = i*.5;
-      group.add(n);
-    }
-    // chashu pork slice
-    const cG = new THREE.CylinderGeometry(.35,.35,.08,16);
-    const cp = new THREE.Mesh(cG, new M({ color: '#a04030', roughness: .8 }));
-    cp.position.set(-.5, .46, 0); cp.rotation.z = .3; group.add(cp);
-    // egg
-    const eG = new THREE.SphereGeometry(.22, 12, 10);
-    const egg = new THREE.Mesh(eG, new M({ color: '#f8e090', roughness: .5 }));
-    egg.position.set(.5, .5, .2); egg.scale.y = .75; group.add(egg);
-    // nori
-    const norG = new THREE.BoxGeometry(.08,.4,.5);
-    const nor = new THREE.Mesh(norG, new M({ color: '#1a3010', roughness: .9 }));
-    nor.position.set(.1, .5, -.4); nor.rotation.y = .4; group.add(nor);
-
-  } else if (type === 'sushi') {
-    const pieces = [
-      { x: -1.2, z: -.3, c: '#f88050', tc: '#f0e8d0' }, // salmon nigiri
-      { x: -.5, z: .2, c: '#d04040', tc: '#f0e8d0' },  // tuna
-      { x: .2, z: -.2, c: '#f8c860', tc: '#f0e8d0' },  // yellowtail
-      { x: .9, z: .3, c: '#50c888', tc: '#f0e8d0' },   // avocado
-    ];
-    pieces.forEach(p => {
-      const riceG = new THREE.CylinderGeometry(.25,.28,.2,16);
-      const rice = new THREE.Mesh(riceG, new M({ color: p.tc, roughness: .8 }));
-      rice.position.set(p.x, 0, p.z); group.add(rice);
-      const fishG = new THREE.BoxGeometry(.55,.12,.3);
-      const fish = new THREE.Mesh(fishG, new M({ color: p.c, roughness: .5 }));
-      fish.position.set(p.x, .18, p.z); fish.rotation.y = .1; group.add(fish);
-    });
-    // maki rolls
-    for(let i=0;i<3;i++) {
-      const mk = new THREE.CylinderGeometry(.18,.18,.38,16);
-      const mroll = new THREE.Mesh(mk, new M({ color: '#1a3010', roughness: .8 }));
-      mroll.position.set(-1.4+i*.5, .1, .8); mroll.rotation.z = Math.PI/2; group.add(mroll);
-      const inner = new THREE.CylinderGeometry(.1,.1,.4,12);
-      const inm = new THREE.Mesh(inner, new M({ color: ['#f88050','#d04040','#50c888'][i], roughness:.6 }));
-      inm.position.set(-1.4+i*.5, .1, .8); inm.rotation.z = Math.PI/2; group.add(inm);
-    }
-    // plate
-    const plateG = new THREE.CylinderGeometry(1.8,1.8,.05,40);
-    const plate = new THREE.Mesh(plateG, new M({ color: '#e8e0d0', roughness: .2, metalness: .1 }));
-    plate.position.y = -.15; group.add(plate);
-
-  } else if (type === 'steak') {
-    // plate
-    const plateG = new THREE.CylinderGeometry(1.6,1.6,.06,40);
-    group.add(new THREE.Mesh(plateG, new M({ color: '#f0f0ee', roughness: .15, metalness: .15 })));
-    // steak shape (irregular box)
-    const steakG = new THREE.BoxGeometry(1.8, .25, 1.1);
-    const steak = new THREE.Mesh(steakG, new M({ color: '#7a1e10', roughness: .8 }));
-    steak.position.set(0,.2,-.1); group.add(steak);
-    // crust top
-    const crustG = new THREE.BoxGeometry(1.75,.06,1.05);
-    const crust = new THREE.Mesh(crustG, new M({ color: '#3a0c08', roughness: .9 }));
-    crust.position.set(0,.34,-.1); group.add(crust);
-    // butter pat
-    const bG = new THREE.CylinderGeometry(.18,.18,.08,12);
-    const butter = new THREE.Mesh(bG, new M({ color: '#f8d840', roughness: .5 }));
-    butter.position.set(.3,.38,.1); group.add(butter);
-    // asparagus
-    for(let i=0;i<3;i++) {
-      const aG = new THREE.CylinderGeometry(.06,.04,.8,8);
-      const asp = new THREE.Mesh(aG, new M({ color: '#58a040', roughness: .8 }));
-      asp.position.set(-1+i*.15, .25, .7-.i*.05); asp.rotation.z = .2; group.add(asp);
-    }
-
-  } else if (type === 'creme') {
-    // ramekin
-    const ramG = new THREE.CylinderGeometry(.8,.65,.5,24, 1, true);
-    group.add(new THREE.Mesh(ramG, new M({ color: '#e0d8c8', roughness: .3 })));
-    const ramBase = new THREE.CylinderGeometry(.65,.65,.06,24);
-    group.add(new THREE.Mesh(ramBase, new M({ color: '#e0d8c8', roughness: .3 })));
-    // custard
-    const custG = new THREE.CylinderGeometry(.78,.78,.06,24);
-    const cust = new THREE.Mesh(custG, new M({ color: '#f8e880', roughness: .4 }));
-    cust.position.y = .25; group.add(cust);
-    // caramel top
-    const carG = new THREE.CylinderGeometry(.78,.78,.04,24);
-    const car = new THREE.Mesh(carG, new M({ color: '#c06010', roughness: .2, metalness: .05 }));
-    car.position.y = .3; group.add(car);
-    // raspberries
-    for(let i=0;i<3;i++) {
-      const a=(i/3)*Math.PI*2;
-      const rg = new THREE.SphereGeometry(.12,8,8);
-      const rb = new THREE.Mesh(rg, new M({ color: '#c02050', roughness: .7 }));
-      rb.position.set(Math.cos(a)*.5, .36, Math.sin(a)*.5); group.add(rb);
-    }
-
-  } else if (type === 'fries') {
-    // box
-    const boxG = new THREE.BoxGeometry(.8,1.0,.6);
-    group.add(new THREE.Mesh(boxG, new M({ color: '#e82020', roughness: .7 })));
-    const logoG = new THREE.BoxGeometry(.82,.3,.04);
-    const logo = new THREE.Mesh(logoG, new M({ color: '#f8f000', roughness: .8 }));
-    logo.position.set(0,.1,.32); group.add(logo);
-    // fries sticking out
-    for(let i=0;i<18;i++) {
-      const h=.4+Math.random()*.5;
-      const fg = new THREE.BoxGeometry(.06,.06+h,.06);
-      const fry = new THREE.Mesh(fg, new M({ color: '#f0c840', roughness: .8 }));
-      const x=(Math.random()-.5)*.6, z=(Math.random()-.5)*.4;
-      fry.position.set(x, .5+h/2, z);
-      fry.rotation.z = (Math.random()-.5)*.3;
-      fry.rotation.x = (Math.random()-.5)*.3;
-      group.add(fry);
-    }
-
-  } else if (type === 'drink') {
-    // glass
-    const glassMat = new M({ color: '#88ccff', roughness: .05, metalness: .1, transparent: true, opacity: .3 });
-    const glassG = new THREE.CylinderGeometry(.7,.5,1.4,24,1,true);
-    group.add(new THREE.Mesh(glassG, glassMat));
-    const glassBase = new THREE.CylinderGeometry(.5,.5,.06,24);
-    group.add(new THREE.Mesh(glassBase, new M({ color: '#88ccff', roughness:.05, transparent:true, opacity:.4 })));
-    // liquid
-    const liqG = new THREE.CylinderGeometry(.65,.47,1.1,24);
-    const liq = new THREE.Mesh(liqG, new M({ color: '#60a050', roughness: .1, transparent: true, opacity: .8 }));
-    liq.position.y = -.1; group.add(liq);
-    // foam
-    const fG = new THREE.CylinderGeometry(.65,.65,.1,24);
-    const foam = new THREE.Mesh(fG, new M({ color: '#e8f8e8', roughness: .8, transparent: true, opacity: .9 }));
-    foam.position.y = .55; group.add(foam);
-    // straw
-    const stG = new THREE.CylinderGeometry(.03,.03,1.8,8);
-    const st = new THREE.Mesh(stG, new M({ color: '#e04040', roughness: .8 }));
-    st.position.set(.3,.4,0); st.rotation.z = .15; group.add(st);
-  }
-
-  return group;
-}
-
-// ══════════════════════════════════════════
-//  THUMBNAIL RENDERER
-// ══════════════════════════════════════════
-function createThumbRenderer(canvas, modelType, bgColor) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(canvas.offsetWidth || 100, canvas.offsetHeight || 90);
-  renderer.shadowMap.enabled = true;
-  renderer.outputEncoding = THREE.sRGBEncoding;
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, (canvas.offsetWidth||100)/(canvas.offsetHeight||90), .1, 100);
-  camera.position.set(0, 1.5, 4.5);
-  camera.lookAt(0, 0, 0);
-
-  scene.add(new THREE.AmbientLight('#ffffff', .6));
-  const dir = new THREE.DirectionalLight('#ffe0a0', 1.4);
-  dir.position.set(3, 5, 3); dir.castShadow = true; scene.add(dir);
-  const fill = new THREE.DirectionalLight('#a0c0ff', .4);
-  fill.position.set(-3, 2, -2); scene.add(fill);
-
-  const model = buildFoodModel(modelType, scene);
-  scene.add(model);
-
-  let frame;
-  const animate = () => {
-    frame = requestAnimationFrame(animate);
-    model.rotation.y += .012;
-    renderer.render(scene, camera);
-  };
-  animate();
-  return { renderer, scene, model, camera, frame, stop: () => cancelAnimationFrame(frame) };
-}
-
-// ══════════════════════════════════════════
-//  MENU RENDER
-// ══════════════════════════════════════════
-function renderMenu() {
-  // categories
-  const catDiv = document.getElementById('categories');
-  catDiv.innerHTML = '';
-  CATEGORIES.forEach(c => {
-    const btn = document.createElement('button');
-    btn.className = 'cat-btn' + (c === activeCategory ? ' active' : '');
-    btn.textContent = c;
-    btn.onclick = () => { activeCategory = c; renderMenu(); };
-    catDiv.appendChild(btn);
+function buildCats(){
+  const el=document.getElementById('cats');
+  CATS.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='cat'+(c==='All'?' active':'');
+    const icons={All:'✦',Indian:'🍛',Japanese:'🍣','South Indian':'🥞',Burgers:'🍔',Italian:'🍝',Snacks:'🍗',Desserts:'🍮'};
+    d.innerHTML=`<span class="cat-icon">${icons[c]||'🍽'}</span>${c}`;
+    d.onclick=()=>{activeCat=c;document.querySelectorAll('.cat').forEach(x=>x.classList.remove('active'));d.classList.add('active');renderGrid();};
+    el.appendChild(d);
   });
+}
 
-  const grid = document.getElementById('menu-grid');
-  grid.innerHTML = '';
-  const filtered = activeCategory === 'All' ? MENU : MENU.filter(i => i.category === activeCategory);
-
-  filtered.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'food-card';
-    card.innerHTML = `
-      <div class="food-3d-thumb" id="thumb-wrap-${item.id}">
-        <canvas id="thumb-${item.id}" width="100" height="90"></canvas>
+function renderGrid(){
+  const q=document.getElementById('search-inp').value.toLowerCase();
+  const list=FOODS.filter(f=>(activeCat==='All'||f.cat===activeCat)&&(!q||f.name.toLowerCase().includes(q)||f.cat.toLowerCase().includes(q)));
+  document.getElementById('food-grid').innerHTML=list.map(f=>`
+    <div class="card" onclick="openAR(${f.id})">
+      <div class="card-img" style="--grad-color:${f.grad}">
+        <div class="card-img-bg"></div>
+        ${f.tag?`<div class="tag-badge ${f.tag}">${f.tag==='hot'?'🔥 Hot':f.tag==='new'?'✨ New':'❤ Fave'}</div>`:''}
+        <div class="ar-chip">◉ AR</div>
+        <span class="food-emoji">${f.emoji}</span>
       </div>
-      <div class="food-info">
-        <div class="food-name">${item.name} <span class="ar-badge">◉ AR</span></div>
-        <div class="food-desc">${item.desc.slice(0, 55)}…</div>
-        <div class="food-bottom">
-          <div class="food-price">₹${item.price}</div>
-          <button class="food-add" onclick="event.stopPropagation(); quickAdd(${item.id})">+</button>
+      <div class="card-body">
+        <div class="card-name">${f.name}</div>
+        <div class="card-meta">
+          <span class="star">★</span><span>${f.rating}</span>
+          <span>·</span><span>⏱ ${f.time} min</span>
+          <span>·</span><span>📍 1.4 km</span>
+        </div>
+        <div class="card-desc">${f.desc}</div>
+        <div class="card-foot">
+          <div class="price"><span class="currency">₹</span>${f.price}</div>
+          <div class="actions" onclick="event.stopPropagation()">
+            <button class="btn-ar-view" onclick="openAR(${f.id})">◉ View AR</button>
+            <button class="btn-add-card" onclick="addToCart(${f.id})">+ Add</button>
+          </div>
         </div>
       </div>
-    `;
-    card.onclick = () => openDetail(item);
-    grid.appendChild(card);
-
-    // delay thumb init to let DOM render
-    setTimeout(() => {
-      const canvas = document.getElementById('thumb-' + item.id);
-      if (canvas && !thumbScenes[item.id]) {
-        thumbScenes[item.id] = createThumbRenderer(canvas, item.model, item.color);
-      }
-    }, 50 + filtered.indexOf(item) * 30);
-  });
-
-  updateCartCount();
+    </div>
+  `).join('');
 }
+function filterFoods(){renderGrid();}
 
-// ══════════════════════════════════════════
-//  DETAIL VIEW
-// ══════════════════════════════════════════
-let detailModel = null;
-
-function openDetail(item) {
-  currentItem = item;
-  currentQty = 1;
-  document.getElementById('qty-val').textContent = 1;
-  document.getElementById('detail-head-title').textContent = item.name;
-  document.getElementById('detail-name').textContent = item.name;
-  document.getElementById('detail-sub').textContent = item.sub;
-  document.getElementById('detail-price').textContent = '₹' + item.price;
-  document.getElementById('detail-desc').textContent = item.desc;
-  document.getElementById('detail-tags').innerHTML = item.tags.map(t => `<span class="tag">${t}</span>`).join('');
-  document.getElementById('add-cart-btn').textContent = 'Add to Order';
-  document.getElementById('add-cart-btn').classList.remove('added');
-
-  showScreen('detail');
-
-  // cleanup prev
-  if (detailAnimId) cancelAnimationFrame(detailAnimId);
-  if (detailRenderer) detailRenderer.dispose();
-
-  const canvas = document.getElementById('detail-canvas');
-  detailRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  detailRenderer.setPixelRatio(window.devicePixelRatio);
-  detailRenderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
-  detailRenderer.shadowMap.enabled = true;
-  detailRenderer.outputEncoding = THREE.sRGBEncoding;
-
-  detailScene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, canvas.offsetWidth/canvas.offsetHeight, .1, 100);
-  camera.position.set(0, 2, 6);
-  camera.lookAt(0, 0, 0);
-
-  detailScene.add(new THREE.AmbientLight('#ffffff', .5));
-  const dir = new THREE.DirectionalLight('#ffe0a0', 1.8);
-  dir.position.set(4, 6, 4); dir.castShadow = true; detailScene.add(dir);
-  const fill = new THREE.DirectionalLight('#6080ff', .5);
-  fill.position.set(-4, 2, -3); detailScene.add(fill);
-  const rim = new THREE.DirectionalLight('#ff8040', .4);
-  rim.position.set(2, -1, -5); detailScene.add(rim);
-
-  // ground glow
-  const glowG = new THREE.CircleGeometry(1.5,32);
-  const glow = new THREE.Mesh(glowG, new THREE.MeshBasicMaterial({ color: item.color, transparent: true, opacity: .12 }));
-  glow.rotation.x = -Math.PI/2; glow.position.y = -1.0; detailScene.add(glow);
-
-  detailModel = buildFoodModel(item.model, detailScene);
-  detailScene.add(detailModel);
-
-  let autoRotate = true, isDragging = false, lastX = 0;
-  canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; autoRotate = false; });
-  canvas.addEventListener('mousemove', e => { if (isDragging) { detailModel.rotation.y += (e.clientX - lastX) * .01; lastX = e.clientX; } });
-  canvas.addEventListener('mouseup', () => isDragging = false);
-  canvas.addEventListener('touchstart', e => { isDragging = true; lastX = e.touches[0].clientX; autoRotate = false; }, { passive: true });
-  canvas.addEventListener('touchmove', e => { if (isDragging) { detailModel.rotation.y += (e.touches[0].clientX - lastX) * .012; lastX = e.touches[0].clientX; } e.preventDefault(); }, { passive: false });
-  canvas.addEventListener('touchend', () => isDragging = false);
-
-  let t = 0;
-  const animate = () => {
-    detailAnimId = requestAnimationFrame(animate);
-    if (autoRotate) detailModel.rotation.y += .008;
-    detailModel.position.y = Math.sin(t) * .06; t += .02;
-    detailRenderer.render(detailScene, camera);
-  };
-  animate();
-}
-
-function changeQty(d) {
-  currentQty = Math.max(1, currentQty + d);
-  document.getElementById('qty-val').textContent = currentQty;
-}
-
-function addToCart() {
-  if (!currentItem) return;
-  const existing = cart.find(c => c.id === currentItem.id);
-  if (existing) existing.qty += currentQty;
-  else cart.push(Object.assign({}, currentItem, { qty: currentQty }));
-  updateCartCount();
-  const btn = document.getElementById('add-cart-btn');
-  btn.textContent = '✓ Added to Order';
-  btn.classList.add('added');
-  showToast(`${currentItem.name} added to order`);
-  setTimeout(() => { btn.textContent = 'Add to Order'; btn.classList.remove('added'); }, 2000);
-}
-
-function quickAdd(id) {
-  const item = MENU.find(m => m.id === id);
-  const existing = cart.find(c => c.id === id);
-  if (existing) existing.qty++;
-  else cart.push(Object.assign({}, item, { qty: 1 }));
-  updateCartCount();
-  showToast(`${item.name} added!`);
-}
-
-// ══════════════════════════════════════════
-//  AR VIEW
-// ══════════════════════════════════════════
-async function openAR() {
-  if (!currentItem) return;
-  document.getElementById('ar-food-label').textContent = currentItem.name;
-  document.getElementById('ar-instructions').textContent = 'Move camera slowly to detect surface';
-  showScreen('ar');
-
-  const video = document.getElementById('ar-video');
-  const canvas = document.getElementById('ar-canvas');
-  const noCam = document.getElementById('no-camera-msg');
-
-  try {
-    arStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-    video.srcObject = arStream;
-    noCam.style.display = 'none';
-
-    // wait for video to play
-    await new Promise(res => { video.onloadedmetadata = () => { video.play(); res(); }; });
-
-    const w = canvas.offsetWidth, h = canvas.offsetHeight;
-    arRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    arRenderer.setPixelRatio(window.devicePixelRatio);
-    arRenderer.setSize(w, h);
-    arRenderer.setClearColor(0x000000, 0);
-    arRenderer.outputEncoding = THREE.sRGBEncoding;
-
-    arScene = new THREE.Scene();
-    const arCamera = new THREE.PerspectiveCamera(60, w/h, .01, 100);
-    arCamera.position.set(0, 1.5, 3);
-    arCamera.lookAt(0, 0, 0);
-
-    arScene.add(new THREE.AmbientLight('#ffffff', .8));
-    const dirL = new THREE.DirectionalLight('#ffe0a0', 2);
-    dirL.position.set(3, 6, 3); arScene.add(dirL);
-
-    // shadow plane
-    const shadowG = new THREE.CircleGeometry(1.5, 32);
-    const shadowM = new THREE.Mesh(shadowG, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .18 }));
-    shadowM.rotation.x = -Math.PI/2; shadowM.position.y = -1.05; arScene.add(shadowM);
-
-    // glow ring
-    const glowRG = new THREE.RingGeometry(1.0, 1.5, 40);
-    const glowR = new THREE.Mesh(glowRG, new THREE.MeshBasicMaterial({ color: currentItem.color || '#d4882a', transparent: true, opacity: .2, side: THREE.DoubleSide }));
-    glowR.rotation.x = -Math.PI/2; glowR.position.y = -1.03; arScene.add(glowR);
-
-    const arModel = buildFoodModel(currentItem.model, arScene);
-    arModel.scale.set(1.1,1.1,1.1);
-    arScene.add(arModel);
-
-    let detected = false;
-    setTimeout(() => {
-      detected = true;
-      document.getElementById('ar-surface-ind').style.borderColor = 'rgba(100,220,100,.7)';
-      document.getElementById('ar-instructions').textContent = `${currentItem.name} placed on table • Drag to rotate`;
-    }, 2000);
-
-    // touch rotate
-    let lastTX = 0, isTouching = false;
-    canvas.addEventListener('touchstart', e => { isTouching = true; lastTX = e.touches[0].clientX; }, { passive: true });
-    canvas.addEventListener('touchmove', e => {
-      if (isTouching) { arModel.rotation.y += (e.touches[0].clientX - lastTX) * .015; lastTX = e.touches[0].clientX; }
-    }, { passive: true });
-    canvas.addEventListener('touchend', () => isTouching = false);
-    canvas.addEventListener('mousemove', e => { if (e.buttons === 1) arModel.rotation.y += e.movementX * .01; });
-
-    // device orientation
-    const handleOrientation = (e) => {
-      if (e.beta && e.gamma) {
-        arCamera.position.x = (e.gamma / 90) * 1.2;
-        arCamera.position.y = 1.5 - (e.beta - 90) / 90 * 0.8;
-        arCamera.lookAt(0, 0, 0);
-      }
-    };
-    if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', handleOrientation);
-
-    let arT = 0;
-    const arAnimate = () => {
-      arAnimId = requestAnimationFrame(arAnimate);
-      arModel.rotation.y += .006;
-      if (!detected) {
-        arModel.position.y = Math.sin(arT * 1.5) * 0.08 + 0.1;
-      } else {
-        arModel.position.y = Math.sin(arT) * 0.03;
-      }
-      arT += .02;
-      arRenderer.render(arScene, arCamera);
-    };
-    arAnimate();
-
-  } catch(err) {
-    noCam.style.display = 'flex';
-    console.warn('Camera error:', err);
-  }
-}
-
-function closeAR() {
-  if (arAnimId) cancelAnimationFrame(arAnimId);
-  if (arStream) { arStream.getTracks().forEach(t => t.stop()); arStream = null; }
-  if (arRenderer) { arRenderer.dispose(); arRenderer = null; }
-  const video = document.getElementById('ar-video');
-  video.srcObject = null;
-  showScreen('detail');
-}
-
-function snapAR() {
-  showToast('📸 AR snapshot saved!');
-  const canvas = document.getElementById('ar-canvas');
-  canvas.style.filter = 'brightness(2)';
-  setTimeout(() => canvas.style.filter = '', 200);
-}
-
-// ══════════════════════════════════════════
+// ═══════════════════════════════════════
 //  CART
-// ══════════════════════════════════════════
-function renderCart() {
-  const itemsDiv = document.getElementById('cart-items');
-  const emptyDiv = document.getElementById('cart-empty');
-  const footer = document.getElementById('cart-footer');
-  itemsDiv.innerHTML = '';
+// ═══════════════════════════════════════
+function addToCart(id){
+  cart[id]=(cart[id]||0)+1;
+  updateCart();
+  showToast('Added to cart ✓');
+  const dot=document.getElementById('cart-dot');
+  dot.classList.remove('pop');void dot.offsetWidth;dot.classList.add('pop');
+}
+function removeFromCart(id){if(cart[id]>1)cart[id]--;else delete cart[id];updateCart();}
+function openCart(){document.getElementById('cart-panel').classList.add('open');document.getElementById('cart-overlay').classList.add('open');}
+function closeCart(){document.getElementById('cart-panel').classList.remove('open');document.getElementById('cart-overlay').classList.remove('open');}
+function updateCart(){
+  const total=Object.values(cart).reduce((a,b)=>a+b,0);
+  document.getElementById('cart-dot').textContent=total;
+  document.getElementById('cart-badge').textContent=total;
+  const body=document.getElementById('cart-body');
+  if(!total){body.innerHTML='<div class="cart-empty-state"><span class="empty-icon">🛒</span><p>Your cart is empty<br><small style="color:var(--muted2)">Add something delicious!</small></p></div>';document.getElementById('cart-ft').style.display='none';return;}
+  document.getElementById('cart-ft').style.display='block';
+  body.innerHTML=Object.entries(cart).map(([id,q])=>{const f=FOODS.find(x=>x.id==id);return`<div class="ci"><div class="ci-emoji">${f.emoji}</div><div class="ci-info"><div class="ci-name">${f.name}</div><div class="ci-price">₹${f.price*q}</div></div><div class="qty-row"><button class="qb" onclick="removeFromCart(${id})">−</button><span class="qn">${q}</span><button class="qb" onclick="addToCart(${id})">+</button></div></div>`;}).join('');
+  const sub=Object.entries(cart).reduce((a,[id,q])=>a+FOODS.find(x=>x.id==id).price*q,0);
+  const tax=Math.round(sub*0.05);
+  document.getElementById('sum-sub').textContent='₹'+sub;
+  document.getElementById('sum-tax').textContent='₹'+tax;
+  document.getElementById('sum-total').textContent='₹'+(sub+35+tax);
+}
+function placeOrder(){showToast('🎉 Order confirmed! On its way!');cart={};updateCart();closeCart();}
 
-  if (cart.length === 0) {
-    emptyDiv.style.display = 'flex';
-    footer.style.display = 'none';
-    return;
-  }
-  emptyDiv.style.display = 'none';
-  footer.style.display = 'block';
+// ═══════════════════════════════════════
+//  AR VIEWER
+// ═══════════════════════════════════════
+async function openAR(id){
+  arFood=FOODS.find(f=>f.id===id);
+  document.getElementById('ar-fname').textContent=arFood.name;
+  document.getElementById('ar-fsub').textContent=arFood.desc;
+  document.getElementById('ar-fprice').textContent='₹'+arFood.price;
+  document.getElementById('ar-frat').textContent=arFood.rating+' (2.1k reviews)';
+  document.getElementById('ar-order-btn').onclick=()=>{addToCart(id);closeAR();};
+  document.getElementById('ar-viewer').classList.add('open');
+  document.body.style.overflow='hidden';
 
-  cart.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'cart-item';
-    row.innerHTML = `
-      <div class="cart-item-thumb"><canvas id="cthmb-${item.id}" width="56" height="56"></canvas></div>
-      <div class="cart-item-info">
-        <div class="cart-item-name">${item.name}</div>
-        <div class="cart-item-price">₹${item.price} × ${item.qty} = ₹${item.price * item.qty}</div>
-      </div>
-      <div class="cart-item-qty">
-        <button class="cq-btn" onclick="cartQty(${item.id}, -1)">−</button>
-        <span>${item.qty}</span>
-        <button class="cq-btn" onclick="cartQty(${item.id}, 1)">+</button>
-      </div>
-    `;
-    itemsDiv.appendChild(row);
-    setTimeout(() => {
-      const c = document.getElementById('cthmb-' + item.id);
-      if (c) createThumbRenderer(c, item.model, item.color);
-    }, 50 * idx);
+  // Start camera
+  const vid=document.getElementById('cam-video');
+  const spbg=document.getElementById('space-bg');
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
+    vid.srcObject=stream;vid.style.display='block';spbg.style.display='none';
+  }catch(e){vid.style.display='none';spbg.style.display='block';}
+
+  // Scanner sequence
+  document.getElementById('ar-scanner').style.display='flex';
+  document.getElementById('ar-hud').style.display='none';
+  animateScan(()=>{
+    document.getElementById('ar-scanner').style.display='none';
+    document.getElementById('ar-hud').style.display='flex';
+    initThree(arFood.model);
   });
-
-  const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = Math.round(sub * .05);
-  document.getElementById('cart-sub').textContent = '₹' + sub;
-  document.getElementById('cart-tax').textContent = '₹' + tax;
-  document.getElementById('cart-total').textContent = '₹' + (sub + tax);
 }
 
-function cartQty(id, d) {
-  const idx = cart.findIndex(c => c.id === id);
-  if (idx === -1) return;
-  cart[idx].qty += d;
-  if (cart[idx].qty <= 0) cart.splice(idx, 1);
-  updateCartCount();
-  renderCart();
+function closeAR(){
+  document.getElementById('ar-viewer').classList.remove('open');
+  document.body.style.overflow='';
+  const vid=document.getElementById('cam-video');
+  if(vid.srcObject)vid.srcObject.getTracks().forEach(t=>t.stop());vid.srcObject=null;
+  if(animId)cancelAnimationFrame(animId);
+  if(renderer){renderer.dispose();renderer=null;}
+  scene=null;foodGroup=null;
 }
 
-function updateCartCount() {
-  const total = cart.reduce((s, i) => s + i.qty, 0);
-  const el = document.getElementById('cart-count');
-  el.textContent = total;
-  el.classList.toggle('visible', total > 0);
+// ── SCANNER ANIMATION ──
+function buildScanDots(){
+  const el=document.getElementById('scan-dots');
+  for(let i=0;i<25;i++){const d=document.createElement('div');d.className='scan-dot';d.id='sd'+i;el.appendChild(d);}
+}
+function animateScan(cb){
+  const fill=document.getElementById('scan-bar-fill');
+  let pct=0,lit=0;
+  const order=[...Array(25).keys()].sort(()=>Math.random()-0.5);
+  const iv=setInterval(()=>{
+    pct+=3;fill.style.width=pct+'%';
+    if(lit<25&&Math.random()>0.4){const d=document.getElementById('sd'+order[lit++]);if(d)d.classList.add('lit');}
+    if(pct>=100){clearInterval(iv);setTimeout(cb,300);}
+  },55);
 }
 
-function placeOrder() {
-  const num = 'SAV-' + Math.floor(1000 + Math.random() * 9000);
-  document.getElementById('order-num-val').textContent = num;
-  cart = [];
-  updateCartCount();
-  showScreen('confirm');
+// ═══════════════════════════════════════
+//  THREE.JS
+// ═══════════════════════════════════════
+function initThree(model){
+  if(animId)cancelAnimationFrame(animId);
+  if(renderer){renderer.dispose();}
+  const canvas=document.getElementById('ar-canvas');
+  const W=window.innerWidth,H=window.innerHeight;
+  renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(W,H);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(45,W/H,0.1,100);
+  camera.position.set(0,2,7);camera.lookAt(0,0,0);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff,0.7));
+  const sun=new THREE.DirectionalLight(0xffe8d0,1.4);
+  sun.position.set(6,10,8);sun.castShadow=true;
+  sun.shadow.mapSize.width=1024;sun.shadow.mapSize.height=1024;
+  scene.add(sun);
+  const fillLight=new THREE.DirectionalLight(0x8ab4f8,0.5);fillLight.position.set(-6,3,-4);scene.add(fillLight);
+  const rim=new THREE.PointLight(0xff6622,0.6,20);rim.position.set(0,6,-5);scene.add(rim);
+
+  // AR Floor grid
+  const grid=new THREE.GridHelper(12,24,0x00e5ff,0x00e5ff);
+  grid.material.opacity=0.2;grid.material.transparent=true;
+  grid.position.y=-2.2;scene.add(grid);
+
+  // Shadow plane
+  const sp=new THREE.Mesh(new THREE.PlaneGeometry(12,12),new THREE.ShadowMaterial({opacity:0.3}));
+  sp.rotation.x=-Math.PI/2;sp.position.y=-2.2;sp.receiveShadow=true;scene.add(sp);
+
+  // Blob shadow under food
+  const blob=new THREE.Mesh(new THREE.CircleGeometry(1.2,32),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35}));
+  blob.rotation.x=-Math.PI/2;blob.position.y=-2.18;scene.add(blob);
+
+  // Food model
+  foodGroup=new THREE.Group();
+  foodScale=1;
+  const m=buildModel(model);
+  foodGroup.add(m);
+  scene.add(foodGroup);
+
+  // Entry animation
+  foodGroup.scale.setScalar(0);
+  let entry=0;
+  function entryAnim(){
+    entry+=0.05;
+    const s=Math.min(1,entry*entry*(3-2*entry)); // smoothstep
+    foodGroup.scale.setScalar(s);
+    if(entry<1)requestAnimationFrame(entryAnim);
+  }
+  entryAnim();
+
+  // Particles
+  addParticles();
+
+  // Controls
+  setupPointerControls(canvas);
+  startLoop();
 }
 
-function resetAndGoHome() {
-  showScreen('menu');
+function startLoop(){
+  function loop(){
+    animId=requestAnimationFrame(loop);
+    if(autoSpin&&foodGroup)foodGroup.rotation.y+=0.007;
+    renderer&&renderer.render(scene,camera);
+  }
+  loop();
 }
 
-// ══════════════════════════════════════════
+function setupPointerControls(canvas){
+  let lastPinchDist=0;
+  canvas.addEventListener('mousedown',e=>{dragging=true;autoSpin=false;prevXY={x:e.clientX,y:e.clientY};});
+  window.addEventListener('mouseup',()=>{dragging=false;setTimeout(()=>autoSpin=true,2500);});
+  window.addEventListener('mousemove',e=>{
+    if(!dragging||!foodGroup)return;
+    foodGroup.rotation.y+=(e.clientX-prevXY.x)*0.012;
+    foodGroup.rotation.x+=(e.clientY-prevXY.y)*0.012;
+    prevXY={x:e.clientX,y:e.clientY};
+  });
+  canvas.addEventListener('touchstart',e=>{dragging=true;autoSpin=false;prevXY={x:e.touches[0].clientX,y:e.touches[0].clientY};if(e.touches.length===2)lastPinchDist=pinchDist(e);},{passive:true});
+  canvas.addEventListener('touchend',()=>{dragging=false;setTimeout(()=>autoSpin=true,2500);});
+  canvas.addEventListener('touchmove',e=>{
+    if(!foodGroup)return;
+    if(e.touches.length===2){
+      const d=pinchDist(e);
+      if(lastPinchDist){const delta=(d-lastPinchDist)*0.01;foodScale=Math.max(0.4,Math.min(2.5,foodScale+delta));foodGroup.scale.setScalar(foodScale);}
+      lastPinchDist=d;return;
+    }
+    if(!dragging)return;
+    foodGroup.rotation.y+=(e.touches[0].clientX-prevXY.x)*0.012;
+    foodGroup.rotation.x+=(e.touches[0].clientY-prevXY.y)*0.012;
+    prevXY={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  },{passive:true});
+}
+function pinchDist(e){return Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}
+function zoomFood(f){foodScale=Math.max(0.4,Math.min(2.5,foodScale*f));if(foodGroup)foodGroup.scale.setScalar(foodScale);}
+function resetFood(){foodScale=1;if(foodGroup){foodGroup.scale.setScalar(1);foodGroup.rotation.set(0,0,0);autoSpin=true;}}
+
+function addParticles(){
+  const geo=new THREE.BufferGeometry();
+  const n=80,pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){pos[i*3]=(Math.random()-0.5)*6;pos[i*3+1]=Math.random()*4-1;pos[i*3+2]=(Math.random()-0.5)*6;}
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({color:0x00e5ff,size:0.06,transparent:true,opacity:0.5});
+  const pts=new THREE.Points(geo,mat);
+  scene.add(pts);
+  function floatPts(){requestAnimationFrame(floatPts);if(!scene)return;const p=geo.attributes.position.array;for(let i=0;i<n;i++){p[i*3+1]+=0.008;if(p[i*3+1]>3)p[i*3+1]=-1;}geo.attributes.position.needsUpdate=true;}
+  floatPts();
+}
+
+// ═══════════════════════════════════════
+//  3D FOOD MODELS
+// ═══════════════════════════════════════
+function M(color,rough=0.75,metal=0.05,emissive=0){
+  return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive:emissive?new THREE.Color(emissive):undefined,emissiveIntensity:emissive?0.15:0});
+}
+function mk(geo,mat){const m=new THREE.Mesh(geo,mat);m.castShadow=true;return m;}
+
+function buildModel(type){
+  const g=new THREE.Group();
+  ({biryani:buildBiryani,curry:buildCurry,dosa:buildDosa,sushi:buildSushi,burger:buildBurger,ramen:buildRamen,tikka:buildTikka,pasta:buildPasta,icecream:buildIcecream,wings:buildWings}[type]||buildBiryani)(g);
+  return g;
+}
+
+// ── BIRYANI ──
+function buildBiryani(g){
+  g.position.y=-0.6;
+  // Pot base
+  const pot=mk(new THREE.CylinderGeometry(1.4,1.0,1.5,32,1,true),M(0x2C1A0E,0.9));
+  g.add(pot);
+  const potBase=mk(new THREE.CylinderGeometry(1.0,0.9,0.12,32),M(0x2C1A0E,0.9));
+  potBase.position.y=-0.81;g.add(potBase);
+  // Rice layers
+  const rice=mk(new THREE.CylinderGeometry(1.35,1.35,0.5,32),M(0xF5E6C0,0.8));
+  rice.position.y=0.75;g.add(rice);
+  // Saffron color patches on rice
+  for(let i=0;i<6;i++){
+    const patch=mk(new THREE.SphereGeometry(0.28,10,10),M(0xFF9900,0.7));
+    patch.scale.y=0.15;const a=i*1.05;
+    patch.position.set(Math.cos(a)*0.75,1.01,Math.sin(a)*0.65);g.add(patch);
+  }
+  // Fried onion strips
+  for(let i=0;i<10;i++){
+    const on=mk(new THREE.CylinderGeometry(0.04,0.04,0.35+Math.random()*0.2,6),M(0xA0522D,0.9));
+    on.rotation.set(Math.random()*0.8-0.4,Math.random()*Math.PI,Math.random()*0.4-0.2);
+    on.position.set(Math.random()*1.1-0.55,1.02+Math.random()*0.15,Math.random()*1.0-0.5);g.add(on);
+  }
+  // Chicken pieces
+  [[0.5,1.1,-0.3],[-0.6,1.08,0.35],[0,1.1,0.6]].forEach(([x,y,z])=>{
+    const ch=mk(new THREE.SphereGeometry(0.28,12,12),M(0x8B3A0A,0.85));
+    ch.scale.set(1.5,0.7,1.2);ch.position.set(x,y,z);g.add(ch);
+    // Char marks
+    const c=mk(new THREE.SphereGeometry(0.1,6,6),M(0x3A1A04,0.9));c.scale.set(1.2,0.3,1);c.position.set(x,y+0.12,z);g.add(c);
+  });
+  // Mint leaves
+  for(let i=0;i<8;i++){
+    const l=mk(new THREE.SphereGeometry(0.08,6,6),M(0x228B22,0.85));
+    l.scale.set(1.6,0.25,1);l.position.set(Math.random()*1.1-0.55,1.14+Math.random()*0.05,Math.random()*1.0-0.5);g.add(l);
+  }
+  // Pot lid leaning aside
+  const lid=mk(new THREE.CylinderGeometry(1.42,1.42,0.1,32),M(0x3C2010,0.8,0.1));
+  lid.position.set(2.0,0.5,0);lid.rotation.z=Math.PI/4;g.add(lid);
+  const knob=mk(new THREE.SphereGeometry(0.18,12,12),M(0xC0A020,0.5,0.4));
+  knob.position.set(2.0,0.82,0);g.add(knob);
+}
+
+// ── BUTTER CHICKEN ──
+function buildCurry(g){
+  g.position.y=-0.6;
+  // Bowl
+  const bowl=mk(new THREE.CylinderGeometry(1.55,1.0,1.1,32,1,true),M(0xE8D5B0,0.6,0.05));
+  g.add(bowl);
+  const bowlBase=mk(new THREE.CylinderGeometry(1.0,0.9,0.1,32),M(0xE8D5B0,0.6));
+  bowlBase.position.y=-0.6;g.add(bowlBase);
+  // Curry
+  const curry=mk(new THREE.CylinderGeometry(1.48,1.48,0.18,32),M(0xE05010,0.5,0.05,0xFF5500));
+  curry.position.y=0.5;g.add(curry);
+  // Cream swirl
+  for(let i=0;i<3;i++){
+    const cr=mk(new THREE.TorusGeometry(0.4-i*0.1,0.07,6,20,Math.PI*1.5),M(0xFFF8F0,0.4));
+    cr.rotation.x=Math.PI/2;cr.position.set(0.2,0.62,0);g.add(cr);
+  }
+  // Chicken pieces
+  [[-0.5,0.68,-0.3],[0.5,0.68,0.3],[0,0.68,0.6]].forEach(([x,y,z])=>{
+    const c=mk(new THREE.SphereGeometry(0.3,12,12),M(0x8B3A0A,0.8));
+    c.scale.set(1.4,0.7,1.1);c.position.set(x,y,z);g.add(c);
+  });
+  // Coriander
+  for(let i=0;i<10;i++){
+    const l=mk(new THREE.SphereGeometry(0.06,6,6),M(0x1E8B1E,0.9));
+    l.scale.set(1.5,0.2,1);l.position.set(Math.random()*1.0-0.5,0.72,Math.random()*0.9-0.45);g.add(l);
+  }
+  // Naan bread leaning
+  const naan=mk(new THREE.SphereGeometry(1.0,16,16),M(0xD4A030,0.85));
+  naan.scale.set(1,0.06,1.3);naan.position.set(2.1,0.1,0);naan.rotation.z=0.6;g.add(naan);
+  // Char on naan
+  for(let i=0;i<4;i++){const c=mk(new THREE.SphereGeometry(0.15,8,8),M(0x5A2A00,0.95));c.scale.set(2,0.06,0.8);c.position.set(2.0+Math.random()*0.4-0.2,0.16,Math.random()*0.6-0.3);g.add(c);}
+}
+
+// ── DOSA ──
+function buildDosa(g){
+  g.position.y=-0.4;
+  // Dosa (flat cone/rolled shape)
+  const dosa=mk(new THREE.ConeGeometry(0.5,3.0,20),M(0xD4A030,0.8));
+  dosa.rotation.z=Math.PI/2.2;dosa.position.set(-0.5,0.3,0);g.add(dosa);
+  // Crispy texture lines
+  for(let i=0;i<6;i++){
+    const l=mk(new THREE.CylinderGeometry(0.02,0.02,2.5,6),M(0xA06020,0.9));
+    l.rotation.z=Math.PI/2.2;l.position.set(-0.5+i*0.1,0.3+i*0.05,Math.random()*0.2-0.1);g.add(l);
+  }
+  // Filling peeking out
+  const fill=mk(new THREE.SphereGeometry(0.6,12,12),M(0xFFD060,0.8));
+  fill.scale.set(1,0.5,0.8);fill.position.set(0.9,0.2,0);g.add(fill);
+  // Potato pieces
+  for(let i=0;i<5;i++){const p=mk(new THREE.SphereGeometry(0.15,8,8),M(0xFFD060,0.8));p.position.set(0.7+Math.random()*0.5,0.2+Math.random()*0.3,Math.random()*0.5-0.25);g.add(p);}
+  // Three chutneys (small bowls)
+  [[-1.4,-0.1,0.8],[-1.4,-0.1,0],[-1.4,-0.1,-0.8]].forEach(([x,y,z],i)=>{
+    const b=mk(new THREE.CylinderGeometry(0.38,0.28,0.22,20),M(0xF0DCA0,0.6));b.position.set(x,y,z);g.add(b);
+    const cols=[0x00AA44,0xCC3300,0xF5F5F5];
+    const c=mk(new THREE.CylinderGeometry(0.34,0.34,0.08,20),M(cols[i],0.5));c.position.set(x,y+0.15,z);g.add(c);
+  });
+}
+
+// ── SUSHI ──
+function buildSushi(g){
+  g.position.y=-0.6;
+  // Plate
+  const plate=mk(new THREE.CylinderGeometry(2.1,2.1,0.1,40),M(0xF8F4EE,0.3,0.1));g.add(plate);
+  const rim=mk(new THREE.TorusGeometry(2.1,0.1,8,40),M(0xEEE9E0,0.3));rim.rotation.x=Math.PI/2;rim.position.y=0.05;g.add(rim);
+  // Sushi rolls grid
+  const positions=[[-1.2,0,-0.5],[-0.3,0,-0.5],[0.6,0,-0.5],[-0.75,0,0.5],[0.15,0,0.5],[1.05,0,0.5]];
+  const fillings=[0xFF7744,0xFF5533,0xFF9933,0x33AA66,0x4488FF,0xAA44CC];
+  positions.forEach(([x,y,z],i)=>{
+    const nori=mk(new THREE.CylinderGeometry(0.48,0.48,0.82,20),M(0x1A2A1A,0.9));nori.position.set(x,y+0.51,z);g.add(nori);
+    const rice=mk(new THREE.CylinderGeometry(0.4,0.4,0.84,20),M(0xF5F0E0,0.8));rice.position.set(x,y+0.51,z);g.add(rice);
+    const fill=mk(new THREE.CylinderGeometry(0.16,0.16,0.85,10),M(fillings[i],0.6));fill.position.set(x,y+0.51,z);g.add(fill);
+    // Sesame seeds
+    for(let j=0;j<4;j++){const s=mk(new THREE.SphereGeometry(0.04,6,6),M(0xF0E8C8,0.9));s.position.set(x+Math.cos(j*1.6)*0.18,y+0.95,z+Math.sin(j*1.6)*0.18);g.add(s);}
+  });
+  // Wasabi & Ginger
+  const wasabi=mk(new THREE.SphereGeometry(0.35,10,10),M(0x5AB52A,0.8));wasabi.scale.set(0.9,0.45,0.7);wasabi.position.set(-1.6,0.2,0);g.add(wasabi);
+  const ginger=mk(new THREE.SphereGeometry(0.45,12,12),M(0xFFB3C1,0.7));ginger.scale.set(1,0.18,0.75);ginger.position.set(1.6,0.1,0);g.add(ginger);
+  // Soy sauce small dish
+  const dish=mk(new THREE.CylinderGeometry(0.5,0.4,0.15,20),M(0x222222,0.5,0.2));dish.position.set(0,-0.02,1.45);g.add(dish);
+  const soy=mk(new THREE.CylinderGeometry(0.46,0.46,0.08,20),M(0x1A0800,0.2,0.1));soy.position.set(0,0.11,1.45);g.add(soy);
+}
+
+// ── BURGER ──
+function buildBurger(g){
+  g.position.y=-0.6;
+  const bbun=mk(new THREE.CylinderGeometry(1.2,1.0,0.38,32),M(0xC8860A,0.8));bbun.position.y=0;g.add(bbun);
+  for(let i=0;i<4;i++){const s=mk(new THREE.SphereGeometry(0.07,6,6),M(0xF0EAC8,0.9));s.position.set(Math.cos(i*1.6)*0.7,0.2,Math.sin(i*1.6)*0.5);g.add(s);}
+  const patty=mk(new THREE.CylinderGeometry(1.1,1.1,0.32,32),M(0x3A1808,0.9));patty.position.y=0.38;g.add(patty);
+  for(let i=0;i<3;i++){const c=mk(new THREE.TorusGeometry(0.25+i*0.22,0.035,4,16),M(0x1A0804,0.95));c.rotation.x=Math.PI/2;c.position.y=0.56;g.add(c);}
+  const cheese=mk(new THREE.CylinderGeometry(1.22,1.22,0.055,4),M(0xFFCC00,0.55));cheese.rotation.y=Math.PI/4;cheese.position.y=0.62;g.add(cheese);
+  const tomato=mk(new THREE.CylinderGeometry(1.06,1.06,0.1,32),M(0xCC2200,0.65));tomato.position.y=0.7;g.add(tomato);
+  for(let i=0;i<8;i++){const l=mk(new THREE.TorusGeometry(0.85+Math.random()*0.2,0.08+Math.random()*0.04,5,10),M(0x1E7A1E,0.9));l.rotation.x=Math.PI/2+Math.random()*0.3;l.rotation.z=i*0.8;l.position.set(Math.random()*0.18-0.09,0.84,Math.random()*0.18-0.09);g.add(l);}
+  const tbun=mk(new THREE.SphereGeometry(1.22,32,16,0,Math.PI*2,0,Math.PI*0.55),M(0xD4941C,0.72));tbun.position.y=0.98;g.add(tbun);
+  for(let i=0;i<7;i++){const s=mk(new THREE.SphereGeometry(0.065,6,6),M(0xF0EAC8,0.9));s.position.set(Math.cos(i*0.9)*0.62,1.5,Math.sin(i*0.9)*0.42);g.add(s);}
+}
+
+// ── RAMEN ──
+function buildRamen(g){
+  g.position.y=-0.6;
+  const bowl=mk(new THREE.CylinderGeometry(1.6,1.1,1.15,32,1,true),M(0x1E1E2E,0.7,0.15));g.add(bowl);
+  mk(new THREE.CylinderGeometry(1.1,1.0,0.12,32),M(0x1E1E2E,0.7,0.15)).position.y=-0.63;g.add(g.children[g.children.length-1]);
+  const broth=mk(new THREE.CylinderGeometry(1.54,1.54,0.18,32),M(0xB06830,0.3,0.1));broth.position.y=0.53;g.add(broth);
+  for(let i=0;i<5;i++){const n=mk(new THREE.TorusGeometry(0.75+i*0.09,0.05,7,28),M(0xF0E0B0,0.7));n.rotation.x=Math.PI/2;n.position.y=0.53+i*0.05;g.add(n);}
+  const pork=mk(new THREE.CylinderGeometry(0.44,0.44,0.13,20),M(0x8B3A10,0.8));pork.position.set(-0.6,0.73,0.35);g.add(pork);
+  const fat=mk(new THREE.CylinderGeometry(0.45,0.45,0.035,20),M(0xF5F0D8,0.65));fat.position.set(-0.6,0.8,0.35);g.add(fat);
+  const ew=mk(new THREE.SphereGeometry(0.33,16,16,0,Math.PI*2,0,Math.PI*0.5),M(0xF5F5E0,0.5));ew.rotation.x=Math.PI;ew.position.set(0.6,0.7,0.42);g.add(ew);
+  const ey=mk(new THREE.SphereGeometry(0.19,12,12),M(0xFF9900,0.4));ey.position.set(0.6,0.71,0.42);g.add(ey);
+  const nori=mk(new THREE.BoxGeometry(0.04,0.65,0.48),M(0x151F15,0.9));nori.position.set(-0.02,0.78,-0.6);g.add(nori);
+  for(let i=0;i<9;i++){const on=mk(new THREE.CylinderGeometry(0.028,0.028,0.28+Math.random()*0.15,6),M(0x4CAF50,0.8));on.rotation.set(Math.random()*0.5-0.25,0,Math.random()*0.5-0.25);on.position.set(Math.random()*1.1-0.55,0.88+Math.random()*0.15,Math.random()*1.1-0.55);g.add(on);}
+}
+
+// ── PANEER TIKKA ──
+function buildTikka(g){
+  g.position.y=-0.4;
+  // Skewers
+  [[-0.8,0],[-0.2,0.1],[0.4,0],[1.0,-0.1]].forEach(([xOff,zOff])=>{
+    const skewer=mk(new THREE.CylinderGeometry(0.04,0.04,4.5,8),M(0xC8A060,0.7));
+    skewer.rotation.z=Math.PI/8;skewer.position.set(xOff,-0.2,zOff);g.add(skewer);
+    const pieces=[
+      {col:0xFFF0C0,s:[1,0.9,1],y:0.4},
+      {col:0xCC3300,s:[0.9,0.8,0.85],y:0.95},
+      {col:0x22AA44,s:[0.8,0.85,0.9],y:1.45},
+      {col:0xFFF0C0,s:[1,0.9,1],y:1.95},
+    ];
+    pieces.forEach(({col,s,y})=>{
+      const p=mk(new THREE.BoxGeometry(0.62,0.55,0.6),M(col,0.8));
+      p.scale.set(s[0],s[1],s[2]);p.rotation.y=Math.random()*0.6-0.3;
+      p.position.set(xOff+Math.sin(Math.PI/8)*y,y-0.3,zOff+Math.cos(Math.PI/8)*0.05);g.add(p);
+      // Char marks
+      const c=mk(new THREE.BoxGeometry(0.55,0.08,0.55),M(0x3A1A04,0.95));c.position.set(xOff+Math.sin(Math.PI/8)*y,y-0.02,zOff);g.add(c);
+    });
+  });
+  // Onion and pepper rings
+  for(let i=0;i<8;i++){
+    const veg=mk(new THREE.TorusGeometry(0.25,0.06,6,12),Math.random()>0.5?M(0xFF4444,0.8):M(0xFFAA00,0.8));
+    veg.position.set(Math.random()*2.2-0.4,-0.55+Math.random()*0.15,Math.random()*0.6-0.3);veg.rotation.x=Math.PI/2+Math.random()*0.5;g.add(veg);
+  }
+  // Lemon wedge
+  const lem=mk(new THREE.SphereGeometry(0.4,12,12),M(0xFFE040,0.6));lem.scale.set(0.6,0.4,1);lem.position.set(-1.7,-0.55,0);g.add(lem);
+  const lemSeg=mk(new THREE.CylinderGeometry(0.35,0.35,0.04,8,1,false,0,Math.PI),M(0xFFDD00,0.5));lemSeg.rotation.x=-Math.PI/2;lemSeg.position.set(-1.7,-0.37,-0.01);g.add(lemSeg);
+}
+
+// ── PASTA ──
+function buildPasta(g){
+  g.position.y=-0.5;
+  const plate=mk(new THREE.CylinderGeometry(2.0,2.0,0.1,40),M(0xF8F4EE,0.35,0.1));g.add(plate);
+  mk(new THREE.TorusGeometry(2.0,0.1,8,40),M(0xEEE9E0,0.35)).rotation.x=Math.PI/2;g.children[g.children.length-1].position.y=0.05;
+  const pk=mk(new THREE.TorusKnotGeometry(0.72,0.075,100,10,2,3),M(0xE8C07A,0.7));pk.position.y=0.42;pk.scale.set(1,0.55,1);g.add(pk);
+  for(let i=0;i<6;i++){const t=mk(new THREE.TorusGeometry(0.38+i*0.07,0.048,6,22),M(0xD4A840,0.7));t.rotation.x=Math.PI/2+Math.random()*0.5;t.rotation.z=Math.random()*Math.PI;t.position.set(Math.random()*0.35-0.18,0.3+i*0.07,Math.random()*0.35-0.18);g.add(t);}
+  [[-0.6,0.7,-0.35],[0.55,0.65,0.42],[-0.1,0.68,0.62]].forEach(([x,y,z])=>{
+    const mb=mk(new THREE.SphereGeometry(0.28,14,14),M(0x5C2A0A,0.88));mb.position.set(x,y,z);g.add(mb);
+    const gl=mk(new THREE.SphereGeometry(0.27,14,14),M(0x8B1A00,0.45,0.05,0xAA0000));gl.position.set(x,y+0.06,z);g.add(gl);
+  });
+  for(let i=0;i<9;i++){const c=mk(new THREE.BoxGeometry(0.22,0.035,0.09),M(0xFFF8E0,0.45));c.rotation.set(Math.random(),Math.random()*Math.PI,Math.random());c.position.set(Math.random()*1.1-0.55,0.72+Math.random()*0.18,Math.random()*1.1-0.55);g.add(c);}
+  const basil=mk(new THREE.SphereGeometry(0.14,8,8),M(0x1E8B1E,0.88));basil.scale.set(1.5,0.22,1);basil.position.set(0,0.9,0.3);g.add(basil);
+}
+
+// ── ICE CREAM (Gulab Jamun Sundae) ──
+function buildIcecream(g){
+  g.position.y=-1.0;
+  const cup=mk(new THREE.CylinderGeometry(1.0,0.7,1.4,32),M(0xF0E8D8,0.6,0.1));g.add(cup);
+  // Gulab jamun at bottom
+  [[0.4,0.8,-0.2],[-0.3,0.7,0.35],[0,0.95,0.1]].forEach(([x,y,z])=>{
+    const gj=mk(new THREE.SphereGeometry(0.28,14,14),M(0x8B3A10,0.75,0.05));gj.position.set(x,y,z);g.add(gj);
+    const syr=mk(new THREE.SphereGeometry(0.27,10,10),M(0xAA2200,0.3,0.1));syr.position.set(x,y+0.04,z);g.add(syr);
+  });
+  // Gelato scoops
+  const sc1=mk(new THREE.SphereGeometry(0.88,20,20),M(0xFDF5E6,0.35));sc1.position.y=1.55;g.add(sc1);
+  const sc2=mk(new THREE.SphereGeometry(0.8,20,20),M(0xFFB3C1,0.35));sc2.position.set(0.12,2.35,0.1);g.add(sc2);
+  // Rose syrup drizzle
+  for(let i=0;i<5;i++){const dr=mk(new THREE.TorusGeometry(0.5+i*0.08,0.03,5,18,Math.PI*1.2),M(0xDD0044,0.4,0.05));dr.rotation.x=Math.PI/2;dr.rotation.z=i*0.5;dr.position.y=1.55+i*0.12;g.add(dr);}
+  // Pistachio crumbles
+  const pcols=[0x6A8E23,0x4E6B1A,0x8AAA2A];
+  for(let i=0;i<12;i++){const p=mk(new THREE.BoxGeometry(0.1,0.07,0.1),M(pcols[i%3],0.8));p.rotation.set(Math.random(),Math.random(),Math.random());p.position.set(Math.random()*1.0-0.5,1.45+Math.random()*1.1,Math.random()*0.9-0.45);g.add(p);}
+  // Gold leaf (shiny flat pieces)
+  for(let i=0;i<4;i++){const gl=mk(new THREE.BoxGeometry(0.18,0.01,0.12),M(0xFFD700,0.2,0.6));gl.rotation.set(Math.random()*0.5,Math.random()*Math.PI,Math.random()*0.5);gl.position.set(Math.random()*0.6-0.3,2.3+Math.random()*0.2,Math.random()*0.5-0.25);g.add(gl);}
+}
+
+// ── WINGS ──
+function buildWings(g){
+  g.position.y=-0.4;
+  const wpos=[{x:-1.8,z:0,ry:0.4},{x:-0.8,z:0.9,ry:-0.2},{x:0.2,z:0.4,ry:0.6},{x:1.2,z:-0.5,ry:-0.35},{x:-1.3,z:-1.0,ry:0.15},{x:0.7,z:-1.1,ry:-0.55}];
+  wpos.forEach(({x,z,ry})=>{
+    const wg=new THREE.Group();wg.position.set(x,0,z);wg.rotation.y=ry;
+    const wb=mk(new THREE.CylinderGeometry(0.24,0.16,1.2,12),M(0xB8540A,0.8));wb.rotation.z=0.3;wg.add(wb);
+    const bone=mk(new THREE.CylinderGeometry(0.055,0.07,0.28,8),M(0xF5EDD0,0.65));bone.position.y=0.74;bone.rotation.z=0.3;wg.add(bone);
+    const glaze=mk(new THREE.CylinderGeometry(0.26,0.18,1.22,12),M(0xCC3300,0.4,0.1,0xFF2200));glaze.rotation.z=0.3;glaze.position.y=0.02;wg.add(glaze);
+    g.add(wg);
+  });
+  // Dip bowl
+  const bowl=mk(new THREE.CylinderGeometry(0.7,0.55,0.35,20),M(0xF0E0C0,0.6));bowl.position.set(2.2,0.05,0.5);g.add(bowl);
+  const dip=mk(new THREE.CylinderGeometry(0.64,0.64,0.12,20),M(0xFFF8F0,0.4));dip.position.set(2.2,0.28,0.5);g.add(dip);
+  // Green garnish
+  for(let i=0;i<6;i++){const c=mk(new THREE.SphereGeometry(0.05,6,6),M(0x228B22,0.85));c.position.set(2.0+Math.random()*0.4,0.38,0.3+Math.random()*0.4);g.add(c);}
+}
+
+// ═══════════════════════════════════════
+//  STARS (for space background)
+// ═══════════════════════════════════════
+function buildStars(){
+  const el=document.getElementById('stars');
+  for(let i=0;i<120;i++){
+    const s=document.createElement('div');
+    const size=Math.random()*2.5+0.5;
+    s.style.cssText=`position:absolute;border-radius:50%;background:#fff;width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;opacity:${Math.random()*0.6+0.1};animation:twinkle ${Math.random()*3+2}s ease infinite ${Math.random()*3}s`;
+    el.appendChild(s);
+  }
+  const style=document.createElement('style');
+  style.textContent='@keyframes twinkle{0%,100%{opacity:0.1}50%{opacity:0.8}}';
+  document.head.appendChild(style);
+}
+
+// ═══════════════════════════════════════
 //  TOAST
-// ══════════════════════════════════════════
-let toastTimeout;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => t.classList.remove('show'), 2400);
+// ═══════════════════════════════════════
+let toastTimer;
+function showToast(msg){
+  clearTimeout(toastTimer);
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
 }
-
-// ══════════════════════════════════════════
-//  RESIZE
-// ══════════════════════════════════════════
-window.addEventListener('resize', () => {
-  if (detailRenderer) {
-    const canvas = document.getElementById('detail-canvas');
-    detailRenderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
-  }
-  if (arRenderer) {
-    const canvas = document.getElementById('ar-canvas');
-    arRenderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
-  }
-});
-
-// ══════════════════════════════════════════
-//  AUTO-DETECT TABLE FROM URL
-//  e.g. ?table=3  →  skip scan, open menu
-// ══════════════════════════════════════════
-function getTableFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('table');
-}
-
-function initApp() {
-  const table = getTableFromURL();
-  if (table) {
-    // came from QR scan — go straight to menu
-    // update header to show table number
-    document.querySelector('.menu-hero h1').textContent = 'Table ' + table + ' — Menu';
-    document.querySelector('.menu-hero p').textContent = 'Tap any item to view in 3D · Place on your table with AR';
-
-    // also show table badge in top bar
-    const topBar = document.querySelector('.menu-top');
-    const badge = document.createElement('div');
-    badge.style.cssText = 'font-size:.68rem;letter-spacing:.1em;color:var(--gold);background:rgba(200,132,30,.12);border:1px solid rgba(200,132,30,.3);padding:.25rem .7rem;border-radius:20px;';
-    badge.textContent = '🪑 Table ' + table;
-    topBar.insertBefore(badge, topBar.querySelector('.cart-btn'));
-
-    showScreen('menu');
-  } else {
-    // no table param — show the QR scan screen as normal
-    showScreen('scan');
-  }
-}
-
-// kick off
-document.addEventListener('DOMContentLoaded', initApp);
-// fallback if DOMContentLoaded already fired
-if (document.readyState !== 'loading') initApp();
-document.getElementById('scan-btn').addEventListener('click', simulateScan);
 </script>
 </body>
 </html>
