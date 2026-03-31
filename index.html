@@ -331,6 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-ui);display:f
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 // ═══════════════════════════════════════
 //  DATA
@@ -347,6 +348,18 @@ const FOODS=[
   {id:9,name:"Gulab Jamun Sundae",cat:"Desserts",price:159,emoji:"🍮",desc:"Warm gulab jamun served over vanilla gelato with rose syrup, pistachio crumble & edible gold",rating:4.9,time:"10-15",model:"icecream",tag:"fave",grad:"rgba(255,100,200,0.12)"},
   {id:10,name:"Crispy BBQ Wings",cat:"Snacks",price:279,emoji:"🍗",desc:"12 golden-fried wings tossed in smoky honey-chipotle BBQ glaze, served with ranch dip",rating:4.7,time:"20-25",model:"wings",grad:"rgba(180,70,0,0.15)"},
 ];
+
+// ═══════════════════════════════════════
+//  GLB MODEL REGISTRY
+//  To add a new GLB: add an entry below mapping the food's `model` key
+//  to the path of the .glb file (relative to this HTML file).
+//  Example: pizza: 'models/pizza.glb'
+// ═══════════════════════════════════════
+const GLB_MODELS = {
+  burger: 'models/stylized_double_cheeseburger.glb',
+  pizza:   'models/pizza.glb',
+  // ramen:   'models/tonkotsu_ramen.glb',
+};
 
 const CATS=["All","Indian","South Indian","Japanese","Burgers","Italian","Snacks","Desserts"];
 let cart={};
@@ -617,8 +630,59 @@ function mk(geo,mat){const m=new THREE.Mesh(geo,mat);m.castShadow=true;m.receive
 
 function buildModel(type){
   const g=new THREE.Group();
+  // ── Check GLB registry first ──
+  if(GLB_MODELS[type]){
+    loadGLB(g, GLB_MODELS[type]);
+    return g; // group is populated async once loaded
+  }
+  // ── Fallback: procedural Three.js builders ──
   ({biryani:buildBiryani,curry:buildCurry,dosa:buildDosa,sushi:buildSushi,burger:buildBurger,ramen:buildRamen,tikka:buildTikka,pasta:buildPasta,icecream:buildIcecream,wings:buildWings}[type]||buildBiryani)(g);
   return g;
+}
+
+// ── GLB LOADER ──
+// Loads a .glb file into an existing Three.js Group.
+// Auto-centres and scales the model to fit nicely in the AR viewer.
+function loadGLB(targetGroup, glbPath){
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    glbPath,
+    function(gltf){
+      const model = gltf.scene;
+
+      // ── Centre the model on its bounding box ──
+      const box = new THREE.Box3().setFromObject(model);
+      const centre = box.getCenter(new THREE.Vector3());
+      const size   = box.getSize(new THREE.Vector3());
+      model.position.sub(centre); // move pivot to centre
+
+      // ── Auto-scale so the longest axis fits in ~3 units ──
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const targetSize = 3.0;
+      const scaleFactor = targetSize / (maxDim || 1);
+      model.scale.setScalar(scaleFactor);
+
+      // ── Enable shadows on every mesh ──
+      model.traverse(child => {
+        if(child.isMesh){
+          child.castShadow    = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      targetGroup.add(model);
+    },
+    undefined, // progress callback (optional)
+    function(err){
+      console.warn('[CRAVE AR] GLB load error for "'+glbPath+'":', err);
+      // Graceful fallback: show a simple placeholder cube so AR mode still opens
+      const ph = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5,1.5,1.5),
+        new THREE.MeshStandardMaterial({color:0xFF5F1F,roughness:0.6})
+      );
+      targetGroup.add(ph);
+    }
+  );
 }
 
 // ── BIRYANI ──
