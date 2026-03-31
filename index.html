@@ -338,7 +338,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-ui);display:f
 // ═══════════════════════════════════════
 const FOODS=[
   {id:1,name:"Chicken Biryani",cat:"Indian",price:249,emoji:"🍛",desc:"Fragrant basmati rice layered with tender chicken, saffron, caramelised onions & dum-cooked spices",rating:4.9,time:"30-35",model:"biryani",tag:"hot",grad:"rgba(255,140,0,0.18)"},
-  {id:2,name:"Butter Chicken",cat:"Indian",price:289,emoji:"🍲",desc:"Succulent chicken in a velvety tomato-cream sauce, slow-simmered with aromatic spices & served with naan",rating:4.8,time:"25-30",model:"curry",tag:"fave",grad:"rgba(255,70,0,0.15)"},
+  {id:2,name:"Butter Chicken",cat:"Indian",price:289,emoji:"🍲",desc:"Succulent chicken in a velvety tomato-cream sauce, slow-simmered with aromatic spices & served with naan",rating:4.8,time:"25-30",model:"Butter",tag:"fave",grad:"rgba(255,70,0,0.15)"},
   {id:3,name:"Masala Dosa",cat:"South Indian",price:129,emoji:"🥞",desc:"Crispy golden rice crepe stuffed with spiced potato masala, served with sambar & three chutneys",rating:4.7,time:"15-20",model:"dosa",grad:"rgba(255,200,80,0.12)"},
   {id:4,name:"Dragon Sushi Roll",cat:"Japanese",price:479,emoji:"🍱",desc:"Salmon & avocado inside-out roll topped with tobiko, spicy mayo and a soy-mirin glaze",rating:4.9,time:"15-20",model:"sushi",tag:"new",grad:"rgba(0,200,150,0.12)"},
   {id:5,name:"Smash Burger",cat:"Burgers",price:219,emoji:"🍔",desc:"Double smash patty, American cheddar, caramelised onions & house sauce on a toasted brioche bun",rating:4.8,time:"20-25",model:"burger",tag:"hot",grad:"rgba(255,95,31,0.15)"},
@@ -359,7 +359,8 @@ const FOODS=[
 const GLB_MODELS = {
   burger: 'models/stylized_double_cheeseburger.glb',
   pizza:   'models/pizza.glb',
-  // ramen:   'models/tonkotsu_ramen.glb',
+  ramen:   'https://igjtvefiqhxqaqwoacxm.supabase.co/storage/v1/object/public/meet-mind/bowl_of_noodles.glb',
+  Butter:"https://igjtvefiqhxqaqwoacxm.supabase.co/storage/v1/object/public/meet-mind/butter_chicken_set.glb"
 };
 
 const CATS=["All","Indian","South Indian","Japanese","Burgers","Italian","Snacks","Desserts"];
